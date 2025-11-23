@@ -25,11 +25,12 @@ export const ThumbnailCompare: React.FC = () => {
     setLoading(true);
     setResult(null);
     try {
-      const data = await compareThumbnailsVision(imgA, imgB, 'OPENROUTER');
+      // Changed to single call without 'OPENROUTER' param, as service handles it
+      const data = await compareThumbnailsVision(imgA, imgB);
       setResult(data);
     } catch (e) {
       console.error(e);
-      alert("Comparison failed. Please try again.");
+      alert("Comparison failed. Check your API Keys or try again later.");
     } finally {
       setLoading(false);
     }
@@ -41,7 +42,7 @@ export const ThumbnailCompare: React.FC = () => {
       
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Thumbnail A/B Simulator</h2>
-        <p className="text-slate-400 mt-2">Predict the winner using Grok Vision intelligence.</p>
+        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span>.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -68,24 +69,27 @@ export const ThumbnailCompare: React.FC = () => {
 
       <div className="text-center">
         <Button onClick={handleCompare} disabled={loading || !imgA || !imgB} className="px-10 py-4 text-lg rounded-full">
-          {loading ? <Spinner /> : 'Predict Winner'}
+          {loading ? <Spinner /> : 'Predict Winner (Grok)'}
         </Button>
       </div>
 
       {result && (
         <div className="animate-slide-up space-y-6">
           <Card className="bg-gradient-to-br from-slate-900 to-slate-950">
-             <h3 className="text-xl font-bold text-white mb-2">AI Analysis</h3>
+             <h3 className="text-xl font-bold text-white mb-2">Grok Analysis</h3>
              <p className="text-slate-300 leading-relaxed">{result.reasoning}</p>
           </Card>
-          <div className="grid md:grid-cols-2 gap-4">
-            {result.breakdown.map((b, i) => (
-              <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">
-                 <span className="font-medium text-slate-300">{b.criterion}</span>
-                 <Badge color={b.winner === 'A' ? 'green' : 'blue'}>{b.winner}</Badge>
-              </div>
-            ))}
-          </div>
+          
+          {result.breakdown && result.breakdown.length > 0 && (
+            <div className="grid md:grid-cols-2 gap-4">
+              {result.breakdown.map((b, i) => (
+                <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">
+                  <span className="font-medium text-slate-300">{b.criterion}</span>
+                  <Badge color={b.winner === 'A' ? 'green' : 'blue'}>{b.winner}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

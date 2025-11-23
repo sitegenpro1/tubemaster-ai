@@ -1,32 +1,25 @@
-/// <reference types="vite/client" />
-
-import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult, ThumbnailCompareResult } from "../types";
 
 // --- CONFIGURATION ---
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile"; 
-
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_VISION_MODEL = "x-ai/grok-vision-beta"; 
-
-// --- API KEY MANAGEMENT ---
-
-const getApiKey = (provider: 'GROQ' | 'OPENROUTER'): string => {
-  if (provider === 'GROQ') {
-    return import.meta.env.VITE_GROQ_API_KEY || "";
-  } else {
-    return import.meta.env.VITE_OPENROUTER_API_KEY || "";
+// Helper to get keys safely in Vite
+const getEnv = (key: string) => {
+  const meta = import.meta as any;
+  if (typeof meta !== 'undefined' && meta.env) {
+    return meta.env[key] || '';
   }
+  return '';
 };
+
+// Initialize Gemini
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // --- CORE HELPERS ---
 
 const cleanJson = (text: string): string => {
   if (!text) return "{}";
-  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  // Remove <think> tags if present from reasoning models
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
   const firstBrace = clean.indexOf('{');
@@ -36,51 +29,6 @@ const cleanJson = (text: string): string => {
     return clean.substring(firstBrace, lastBrace + 1);
   }
   return clean;
-};
-
-const callLLM = async (
-  provider: 'GROQ' | 'OPENROUTER',
-  model: string,
-  messages: any[],
-  jsonMode: boolean = true
-): Promise<string> => {
-  const url = provider === 'GROQ' ? GROQ_API_URL : OPENROUTER_API_URL;
-  const apiKey = getApiKey(provider);
-  
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${apiKey}`,
-    "Content-Type": "application/json"
-  };
-
-  if (provider === 'OPENROUTER') {
-    headers["HTTP-Referer"] = "https://tubemaster.ai";
-    headers["X-Title"] = "TubeMaster";
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 4000,
-        response_format: jsonMode ? { type: "json_object" } : undefined
-      })
-    });
-
-    if (!response.ok) {
-      console.error(`LLM Error (${response.status})`);
-      return "{}";
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "{}";
-  } catch (error) {
-    console.error("LLM Call Failed:", error);
-    return "{}";
-  }
 };
 
 const compressImage = (base64Str: string): Promise<string> => {
@@ -112,6 +60,58 @@ const compressImage = (base64Str: string): Promise<string> => {
   });
 };
 
+// --- GROK / OPENROUTER HELPERS ---
+
+const callOpenRouterGrok = async (systemPrompt: string, userPrompt: string, images?: string[]): Promise<string> => {
+  const openRouterKey = getEnv('VITE_OPENROUTER_API_KEY');
+  
+  if (!openRouterKey) {
+    throw new Error("Missing VITE_OPENROUTER_API_KEY");
+  }
+
+  const messages: any[] = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  if (images && images.length > 0) {
+    const content = [
+      { type: "text", text: userPrompt },
+      ...images.map(img => ({
+        type: "image_url",
+        image_url: { url: img } // OpenRouter expects data URI directly
+      }))
+    ];
+    messages.push({ role: "user", content });
+  } else {
+    messages.push({ role: "user", content: userPrompt });
+  }
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openRouterKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://tubemaster.ai", 
+      "X-Title": "TubeMaster AI"
+    },
+    body: JSON.stringify({
+      model: "x-ai/grok-2-vision-1212", 
+      messages: messages,
+      temperature: 0.7,
+      response_format: { type: "json_object" } 
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenRouter Error: ${err}`);
+  }
+
+  const json = await response.json();
+  return json.choices?.[0]?.message?.content || "{}";
+};
+
+
 // --- EXPORTED SERVICES ---
 
 export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
@@ -121,22 +121,26 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     Generate 10 highly specific keywords/tags.
     Return strictly a JSON object: { "keywords": [ { "keyword": "...", "searchVolume": "...", "difficulty": 50, "opportunityScore": 80, "trend": "Rising", "intent": "Educational", "cpc": "$1.20", "competitionDensity": "Medium", "topCompetitor": "Channel Name", "videoAgeAvg": "2 years", "ctrPotential": "High" } ] }
   `;
-  const json = await callLLM('GROQ', GROQ_MODEL, [{ role: "user", content: prompt }]);
   try {
-    const parsed = JSON.parse(cleanJson(json));
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    const parsed = JSON.parse(cleanJson(response.text || "{}"));
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
+    console.error("Keyword find error", e);
     return [];
   }
 };
 
-// HYBRID MODEL: Web Scraper + AI Reasoning
 export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
   let contextData = "";
   
   // 1. Web Scraping Layer
   try {
-    // Use AllOrigins to proxy the request and avoid CORS
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
     const response = await fetch(proxyUrl);
     
@@ -144,7 +148,6 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
       const data = await response.json();
       const html = data.contents;
       
-      // Regex extraction for key metadata (lighter than parsing full DOM)
       const titleMatch = html.match(/<title>(.*?)<\/title>/);
       const descMatch = html.match(/name="description" content="(.*?)"/);
       const keywordsMatch = html.match(/name="keywords" content="(.*?)"/);
@@ -180,8 +183,13 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     }
   `;
 
-  const json = await callLLM('GROQ', GROQ_MODEL, [{ role: "user", content: prompt }]);
-  return JSON.parse(cleanJson(json));
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: { responseMimeType: 'application/json' }
+  });
+  
+  return JSON.parse(cleanJson(response.text || "{}"));
 };
 
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
@@ -190,20 +198,32 @@ export const generateScript = async (title: string, audience: string): Promise<S
     Structure: Hook -> Context -> Value -> Pattern Interrupt -> Payoff.
     Return JSON: { "title": "...", "estimatedDuration": "...", "targetAudience": "...", "sections": [ { "title": "...", "content": "...", "duration": "...", "visualCue": "...", "logicStep": "..." } ] }
   `;
-  const json = await callLLM('GROQ', GROQ_MODEL, [{ role: "user", content: prompt }]);
-  return JSON.parse(cleanJson(json));
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: { responseMimeType: 'application/json' }
+  });
+  return JSON.parse(cleanJson(response.text || "{}"));
 };
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
   const prompt = `Generate 10 click-worthy, viral-style YouTube titles for: "${topic}". Return JSON: { "titles": ["..."] }`;
-  const json = await callLLM('GROQ', GROQ_MODEL, [{ role: "user", content: prompt }]);
-  const parsed = JSON.parse(cleanJson(json));
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: { responseMimeType: 'application/json' }
+  });
+  const parsed = JSON.parse(cleanJson(response.text || "{}"));
   return parsed.titles || [];
 };
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
   const prompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
-  return await callLLM('GROQ', GROQ_MODEL, [{ role: "user", content: prompt }], false);
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt
+  });
+  return response.text || "";
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
@@ -211,17 +231,39 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   
   if (optimize) {
     try {
-      finalPrompt = await callLLM('GROQ', GROQ_MODEL, [{ 
-        role: "user", 
-        content: `Optimize this image prompt for Flux AI. Make it highly detailed. Prompt: "${prompt}". Style: ${style}, ${mood}. Output ONLY text.` 
-      }], false);
+      const optimResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Optimize this image prompt for an AI image generator. Make it highly detailed. Prompt: "${prompt}". Style: ${style}, ${mood}. Output ONLY text.`
+      });
+      if (optimResponse.text) {
+        finalPrompt = optimResponse.text;
+      }
     } catch (e) { /* ignore */ }
   }
 
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1280&height=720&model=flux&seed=${Math.floor(Math.random() * 9999)}`;
-  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [{ text: finalPrompt }]
+    }
+  });
+
+  let imageUrl = "";
+  if (response.candidates?.[0]?.content?.parts) {
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+  }
+
+  if (!imageUrl) {
+    throw new Error("No image generated by Gemini");
+  }
+
   return {
-    imageUrl: url,
+    imageUrl: imageUrl,
     originalPrompt: prompt,
     optimizedPrompt: finalPrompt,
     style,
@@ -229,20 +271,45 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   };
 };
 
-export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<any> => {
-  const [cA, cB] = await Promise.all([compressImage(imgA), compressImage(imgB)]);
-  const prompt = `Analyze these two thumbnails. Which has higher CTR? Return JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
+// Use Grok via OpenRouter for Thumbnail Comparison
+export const compareThumbnailsVision = async (imgA: string, imgB: string): Promise<ThumbnailCompareResult> => {
+  try {
+    const [cA, cB] = await Promise.all([compressImage(imgA), compressImage(imgB)]);
+    
+    // Check if OpenRouter Key exists, otherwise fallback to Gemini
+    const openRouterKey = getEnv('VITE_OPENROUTER_API_KEY');
+    if (openRouterKey) {
+        const system = "You are an expert YouTube Strategist with deep knowledge of CTR (Click Through Rate) psychology. You analyze thumbnails.";
+        const user = `Analyze these two thumbnails. Which has higher CTR potential? Compare contrast, text readability, facial emotion, and curiosity gap. Return strictly JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
+        
+        const jsonStr = await callOpenRouterGrok(system, user, [cA, cB]);
+        return JSON.parse(cleanJson(jsonStr));
+    } else {
+        // Fallback to Gemini if no OpenRouter key
+        console.log("No OpenRouter Key found, falling back to Gemini Vision");
+        const getBase64 = (dataUri: string) => dataUri.split(',')[1];
+        const mimeTypeA = cA.split(';')[0].split(':')[1] || 'image/jpeg';
+        const mimeTypeB = cB.split(';')[0].split(':')[1] || 'image/jpeg';
+        
+        const prompt = `Analyze these two thumbnails. Which has higher CTR? Return JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
 
-  const json = await callLLM('OPENROUTER', OPENROUTER_VISION_MODEL, [
-    {
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: cA } },
-        { type: "image_url", image_url: { url: cB } }
-      ]
+        const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+            parts: [
+            { inlineData: { mimeType: mimeTypeA, data: getBase64(cA) } },
+            { inlineData: { mimeType: mimeTypeB, data: getBase64(cB) } },
+            { text: prompt }
+            ]
+        },
+        config: { responseMimeType: 'application/json' }
+        });
+
+        return JSON.parse(cleanJson(response.text || "{}"));
     }
-  ]);
 
-  return JSON.parse(cleanJson(json));
+  } catch (error) {
+    console.error("Comparison Vision Error:", error);
+    throw error;
+  }
 };
