@@ -1,4 +1,6 @@
-import { ThumbnailGenResult } from "../types";
+/// <reference types="vite/client" />
+
+import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult } from "../types";
 
 // --- CONFIGURATION ---
 
@@ -11,7 +13,6 @@ const OPENROUTER_VISION_MODEL = "x-ai/grok-vision-beta";
 // --- API KEY MANAGEMENT ---
 
 const getApiKey = (provider: 'GROQ' | 'OPENROUTER'): string => {
-  // In Vite, we access env vars via import.meta.env
   if (provider === 'GROQ') {
     return import.meta.env.VITE_GROQ_API_KEY || "";
   } else {
@@ -23,7 +24,9 @@ const getApiKey = (provider: 'GROQ' | 'OPENROUTER'): string => {
 
 const cleanJson = (text: string): string => {
   if (!text) return "{}";
+  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+  // Remove <think> tags if present from reasoning models
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
   const firstBrace = clean.indexOf('{');
@@ -68,9 +71,7 @@ const callLLM = async (
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error(`LLM Error (${response.status}):`, errText);
-      // We return empty JSON on failure to prevent app crashes
+      console.error(`LLM Error (${response.status})`);
       return "{}";
     }
 
@@ -113,7 +114,7 @@ const compressImage = (base64Str: string): Promise<string> => {
 
 // --- EXPORTED SERVICES ---
 
-export const findKeywords = async (topic: string): Promise<any[]> => {
+export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
   const prompt = `
     Act as a YouTube SEO Algorithm Expert.
     Topic: "${topic}"
@@ -130,7 +131,7 @@ export const findKeywords = async (topic: string): Promise<any[]> => {
 };
 
 // HYBRID MODEL: Web Scraper + AI Reasoning
-export const analyzeCompetitor = async (channelUrl: string): Promise<any> => {
+export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
   let contextData = "";
   
   // 1. Web Scraping Layer
@@ -183,7 +184,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<any> => {
   return JSON.parse(cleanJson(json));
 };
 
-export const generateScript = async (title: string, audience: string): Promise<any> => {
+export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
   const prompt = `
     Write a YouTube script for "${title}" aimed at "${audience}".
     Structure: Hook -> Context -> Value -> Pattern Interrupt -> Payoff.
