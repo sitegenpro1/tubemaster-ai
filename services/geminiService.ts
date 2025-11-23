@@ -1,5 +1,5 @@
 
-import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult, RapidFullAnalysisData } from "../types";
+import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult, RapidFullAnalysisData, DescriptionResult } from "../types";
 
 // --- CONFIGURATION ---
 
@@ -31,6 +31,17 @@ const getEnvVar = (key: string): string => {
 
 const getGroqKey = () => getEnvVar('VITE_GROQ_API_KEY');
 const getOpenRouterKey = () => getEnvVar('VITE_OPENROUTER_API_KEY');
+
+// --- SAFETY & ETHICS FILTER ---
+const ETHICAL_SAFETY_INSTRUCTION = `
+  STRICT SAFETY & ETHICAL GUIDELINES:
+  1. Do NOT generate content that is hateful, racist, sexist, or promotes violence or harm.
+  2. Do NOT generate content that is sexually explicit (NSFW), promotes pornography, or nudity.
+  3. Do NOT generate content that promotes gambling, excessive alcohol consumption, or illegal drug use.
+  4. Do NOT generate content that is sinful, religiously offensive, or ethically compromising (haram/sinful).
+  5. If the user request violates these rules, refuse to generate the specific harmful part and provide a sanitized, safe alternative.
+  6. Maintain a helpful, professional, and commercial-safe tone at all times.
+`;
 
 // --- CORE HELPERS ---
 
@@ -80,13 +91,21 @@ const callAI = async (
     headers["X-Title"] = "TubeMaster AI";
   }
 
+  // Inject safety instruction into the system prompt or first message
+  const safeMessages = [...messages];
+  if (safeMessages.length > 0 && safeMessages[0].role === 'system') {
+    safeMessages[0].content += " " + ETHICAL_SAFETY_INSTRUCTION;
+  } else {
+    safeMessages.unshift({ role: 'system', content: ETHICAL_SAFETY_INSTRUCTION });
+  }
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
         model: model,
-        messages: messages,
+        messages: safeMessages,
         temperature: 0.7,
         response_format: jsonMode ? { type: "json_object" } : undefined
       })
@@ -138,6 +157,55 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     console.error("Keyword find error", e);
     throw e;
   }
+};
+
+export const generateSeoTags = async (topic: string): Promise<string[]> => {
+  const systemPrompt = "You are a world-class YouTube SEO Expert. Your job is to generate the absolute best metadata tags.";
+  const userPrompt = `
+    Video Topic: "${topic}"
+    
+    Task: Generate EXACTLY 5 extremely powerful, high-volume, low-competition tags. 
+    Do not give generic tags. Give semantic, long-tail tags that specific audiences search for.
+    
+    Output strictly JSON: { "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"] }
+  `;
+
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+  ], true);
+
+  const parsed = JSON.parse(cleanJson(jsonStr));
+  return parsed.tags || [];
+};
+
+export const generateVideoDescription = async (topic: string, keywords: string): Promise<DescriptionResult> => {
+  const systemPrompt = "You are a YouTube Growth Hacker. You write video descriptions that trigger the algorithm and convert viewers.";
+  const userPrompt = `
+    Video Title/Topic: "${topic}"
+    Focus Keywords (optional): "${keywords}"
+    
+    Write a high-ranking description.
+    Structure:
+    1. Hook: 2 lines that appear 'above the fold' to grab attention.
+    2. Body: SEO-rich summary of what the video covers. Natural language, but keyword heavy.
+    3. Hashtags: 3-5 specific hashtags.
+    
+    Output strictly JSON: 
+    { 
+      "hook": "string", 
+      "body": "string", 
+      "keywordsUsed": ["string"], 
+      "hashtags": ["string"] 
+    }
+  `;
+
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+  ], true);
+
+  return JSON.parse(cleanJson(jsonStr));
 };
 
 export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Promise<CompetitorAnalysisResult> => {
@@ -207,7 +275,7 @@ export const estimateCompetitorAnalysis = async (query: string): Promise<Competi
       "weaknesses": ["string (Common niche pitfalls)"],
       "contentGaps": ["string ( underserved topics in this niche)"],
       "topPerformingTopics": ["string (Viral topics in this niche)"],
-      "actionPlan": "string (Strategic advice for this niche)"
+      "actionPlan": "string (Strategic advice)"
     }
   `;
 
@@ -250,15 +318,23 @@ export const suggestBestTime = async (title: string, audience: string, tags: str
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
 
+  // STRICT POLICY: Prevent generation of realistic human figures for safety/cost reasons
+  // Added Ethical Constraints
+  const safetyInstruction = " Important Constraint: Do NOT generate any human figures, faces, people, men, women, or skin. If the user asks for a person, replace it with a robot, silhouette, or abstract geometric representation. Focus strictly on objects, environments, text, and scenery. Ensure content is ethically safe, non-violent, and not hateful.";
+
   if (optimize) {
     try {
       finalPrompt = await callAI('GROQ', TEXT_MODEL, [{
         role: "user", 
-        content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
+        content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. ${safetyInstruction} ${ETHICAL_SAFETY_INSTRUCTION} Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
       }], false);
     } catch (e) {
       console.warn("Prompt optimization failed, using original");
+      finalPrompt = prompt + " " + safetyInstruction;
     }
+  } else {
+    // If not optimized, just append the constraint
+    finalPrompt = prompt + " " + safetyInstruction;
   }
 
   const encodedPrompt = encodeURIComponent(finalPrompt);
@@ -293,7 +369,7 @@ export const compareThumbnailsVision = async (imgA: string, imgB: string, provid
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyze these two YouTube thumbnails. Which has higher CTR potential? Output strictly JSON: { \"winner\": \"A\" or \"B\", \"scoreA\": number, \"scoreB\": number, \"reasoning\": \"string\", \"breakdown\": [{\"criterion\": \"Contrast\", \"winner\": \"A\", \"explanation\": \"string\"}] }" },
+            { type: "text", text: `Analyze these two YouTube thumbnails. Which has higher CTR potential? Output strictly JSON: { "winner": "A" or "B", "scoreA": number, "scoreB": number, "reasoning": "string", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "string"}] } ${ETHICAL_SAFETY_INSTRUCTION}` },
             { type: "image_url", image_url: { url: imgA } },
             { type: "image_url", image_url: { url: imgB } }
           ]

@@ -1,12 +1,15 @@
+
 import React, { useEffect } from 'react';
 import { Button, Card, SectionTitle } from '../components/UI';
 import { SEO } from '../components/SEO';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HomeProps {
   onNavigate: (view: string) => void;
 }
 
 export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
+  const { isPro } = useAuth();
   
   const tools = [
     {
@@ -15,7 +18,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '🕵️',
       id: 'competitors',
       color: 'from-purple-500 to-indigo-600',
-      stat: 'Traffic Stealer'
+      stat: 'Traffic Stealer',
+      locked: false // Unlocked for Beta
     },
     {
       title: 'YT Keyword Finder',
@@ -23,7 +27,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '🔑',
       id: 'keywords',
       color: 'from-blue-500 to-cyan-500',
-      stat: 'Rank Faster'
+      stat: 'Rank Faster',
+      locked: false
     },
     {
       title: 'Thumbnail Generator',
@@ -31,7 +36,17 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '🎨',
       id: 'thumbnail-gen',
       color: 'from-pink-500 to-rose-500',
-      stat: 'CTR Booster'
+      stat: 'CTR Booster',
+      locked: !isPro // Hard Locked as requested
+    },
+    {
+      title: 'Thumbnail Downloader',
+      desc: 'Instantly extract High-Resolution (4K/HD) thumbnails from any YouTube video URL. Perfect for research and archives.',
+      icon: '📥',
+      id: 'thumbnail-dl',
+      color: 'from-red-500 to-orange-500',
+      stat: 'Utility',
+      locked: false
     },
     {
       title: 'Viral Script Writer',
@@ -39,7 +54,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '✍️',
       id: 'script',
       color: 'from-amber-500 to-orange-500',
-      stat: 'Retention Max'
+      stat: 'Retention Max',
+      locked: false
     },
     {
       title: 'Thumbnail Compare Tool',
@@ -47,7 +63,26 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '🆚',
       id: 'compare',
       color: 'from-emerald-500 to-green-600',
-      stat: 'Vision AI'
+      stat: 'Vision AI',
+      locked: false
+    },
+    {
+      title: 'SEO Tags Generator',
+      desc: 'Generate exactly 5 high-power semantic tags. No spam, just highly relevant metadata to help the algorithm categorize you.',
+      icon: '🏷️',
+      id: 'tags-gen',
+      color: 'from-cyan-400 to-blue-500',
+      stat: 'Metadata Logic',
+      locked: false
+    },
+    {
+      title: 'Description Writer',
+      desc: 'Craft optimized video descriptions with perfect hooks and keyword density to improve search ranking and CTR.',
+      icon: '📝',
+      id: 'desc-gen',
+      color: 'from-indigo-400 to-purple-500',
+      stat: 'Search Ranking',
+      locked: false
     },
     {
       title: 'Title & Timing Optimizer',
@@ -55,7 +90,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       icon: '⏰',
       id: 'title-time',
       color: 'from-slate-500 to-slate-700',
-      stat: 'Algorithm Hacks'
+      stat: 'Algorithm Hacks',
+      locked: false
     }
   ];
 
@@ -166,10 +202,25 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {tools.map((tool) => (
             <div 
               key={tool.id} 
-              onClick={() => onNavigate(tool.id)}
-              className="group block h-full cursor-pointer"
+              onClick={() => !tool.locked && onNavigate(tool.id)}
+              className={`group block h-full relative ${tool.locked ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
             >
               <div className="h-full bg-slate-900/60 border border-slate-800 rounded-3xl p-8 hover:border-brand-500/50 transition-all duration-300 hover:bg-slate-800/80 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-900/20 relative overflow-hidden backdrop-blur-sm">
+                
+                {/* Locked Overlay */}
+                {tool.locked && (
+                  <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6">
+                    <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center mb-3 shadow-2xl">
+                       <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    </div>
+                    <h4 className="text-white font-bold text-lg">Pro Feature</h4>
+                    <p className="text-slate-300 text-sm mt-1 mb-4">Upgrade to unlock this tool.</p>
+                    <button onClick={(e) => { e.stopPropagation(); onNavigate('pricing'); }} className="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm transition-colors">
+                      View Plans
+                    </button>
+                  </div>
+                )}
+
                 {/* Gradient Header Line */}
                 <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${tool.color}`} />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-bl-full pointer-events-none"></div>
@@ -186,9 +237,11 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                   {tool.desc}
                 </p>
                 
-                <div className="mt-6 flex items-center text-brand-400 text-sm font-bold opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                  Open Tool <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                </div>
+                {!tool.locked && (
+                  <div className="mt-6 flex items-center text-brand-400 text-sm font-bold opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                    Open Tool <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -5,6 +5,7 @@ import { analyzeCompetitor, estimateCompetitorAnalysis } from '../services/gemin
 import { resolveChannelId, getChannelStats, getChannelVideos } from '../services/rapidApiService';
 import { CompetitorAnalysisResult, RapidFullAnalysisData } from '../types';
 import { SEO } from '../components/SEO';
+import { useAuth } from '../contexts/AuthContext';
 
 export const CompetitorAnalysis: React.FC = () => {
   const [url, setUrl] = useState('');
@@ -15,6 +16,9 @@ export const CompetitorAnalysis: React.FC = () => {
   const [aiResult, setAiResult] = useState<CompetitorAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Note: Feature unlocked for all users during Beta
+  // const { isPro } = useAuth();
+  
   const isProcessing = status === 'fetching_data' || status === 'analyzing_ai';
 
   const handleAnalyze = async () => {

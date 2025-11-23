@@ -6,7 +6,10 @@ export enum ToolType {
   THUMBNAIL_GENERATOR = 'thumbnail-generator',
   SCRIPT_GENERATOR = 'script-generator',
   BEST_TIME = 'best-time',
-  COMPETITOR_ANALYSIS = 'competitor-analysis'
+  COMPETITOR_ANALYSIS = 'competitor-analysis',
+  TAGS_GENERATOR = 'tags-generator',
+  DESCRIPTION_GENERATOR = 'description-generator',
+  THUMBNAIL_DOWNLOADER = 'thumbnail-downloader'
 }
 
 export interface KeywordResult {
@@ -77,6 +80,13 @@ export interface ThumbnailGenResult {
   optimizedPrompt: string;
   style: string;
   createdAt: number;
+}
+
+export interface DescriptionResult {
+  hook: string;
+  body: string;
+  keywordsUsed: string[];
+  hashtags: string[];
 }
 
 // --- RAPID API TYPES ---

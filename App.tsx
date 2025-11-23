@@ -8,9 +8,15 @@ import { ThumbnailGenerator } from './pages/ThumbnailGenerator';
 import { ThumbnailCompare } from './pages/ThumbnailCompare';
 import { CompetitorAnalysis } from './pages/CompetitorAnalysis';
 import { TitleTime } from './pages/TitleTime';
+import { TagsGenerator } from './pages/TagsGenerator';
+import { DescriptionGenerator } from './pages/DescriptionGenerator';
+import { ThumbnailDownloader } from './pages/ThumbnailDownloader';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { Pricing } from './pages/Pricing';
+import { Login } from './pages/Login';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   // Initialize state: Priority 1: Hash, Priority 2: LocalStorage, Default: 'home'
@@ -61,9 +67,14 @@ function App() {
       case 'keywords': return <KeywordFinder />;
       case 'script': return <ScriptGenerator />;
       case 'thumbnail-gen': return <ThumbnailGenerator />;
+      case 'thumbnail-dl': return <ThumbnailDownloader />;
       case 'compare': return <ThumbnailCompare />;
       case 'competitors': return <CompetitorAnalysis />;
       case 'title-time': return <TitleTime />;
+      case 'tags-gen': return <TagsGenerator />;
+      case 'desc-gen': return <DescriptionGenerator />;
+      case 'pricing': return <Pricing onNavigate={handleNavigate} />;
+      case 'login': return <Login onNavigate={handleNavigate} />;
       case 'about': return <About />;
       case 'contact': return <Contact />;
       case 'privacy': return <PrivacyPolicy />;
@@ -72,9 +83,11 @@ function App() {
   };
 
   return (
-    <Layout currentView={currentView} onNavigate={handleNavigate}>
-      {renderView()}
-    </Layout>
+    <AuthProvider>
+      <Layout currentView={currentView} onNavigate={handleNavigate}>
+        {renderView()}
+      </Layout>
+    </AuthProvider>
   );
 }
 

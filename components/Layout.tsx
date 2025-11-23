@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { AdBanner } from './AdBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +12,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { user, isPro } = useAuth();
 
   // Handle scroll effect for header
   useEffect(() => {
@@ -28,11 +31,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
     { name: 'Home', id: 'home' },
     { name: 'Keywords', id: 'keywords' },
     { name: 'Thumbnails', id: 'thumbnail-gen' },
+    { name: 'Grabber', id: 'thumbnail-dl' },
     { name: 'Scripts', id: 'script' },
-    { name: 'Compare', id: 'compare' },
     { name: 'Spy Tool', id: 'competitors' },
-    { name: 'About', id: 'about' },
-    { name: 'Contact', id: 'contact' },
+    { name: 'Tags', id: 'tags-gen' },
   ];
 
   return (
@@ -82,10 +84,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
             
             {/* Mobile Actions */}
             <div className="flex items-center gap-4">
-              <div className="hidden sm:block">
-                <span className="text-xs font-mono text-brand-300 border border-brand-500/30 px-3 py-1.5 rounded-lg bg-brand-500/10 backdrop-blur-md">
-                  PRO v2.4
-                </span>
+              <div className="hidden sm:flex items-center gap-3">
+                {user ? (
+                   isPro ? (
+                     <span className="text-xs font-mono text-brand-300 border border-brand-500/30 px-3 py-1.5 rounded-lg bg-brand-500/10 backdrop-blur-md cursor-pointer" onClick={() => handleNavClick('pricing')}>
+                       PLAN: PRO
+                     </span>
+                   ) : (
+                     <button 
+                       onClick={() => handleNavClick('pricing')}
+                       className="text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1.5 rounded-lg shadow-lg hover:scale-105 transition-transform"
+                     >
+                       UPGRADE
+                     </button>
+                   )
+                ) : (
+                  <button 
+                    onClick={() => handleNavClick('login')}
+                    className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  >
+                    Login
+                  </button>
+                )}
               </div>
 
               {/* Hamburger Toggle */}
@@ -125,14 +145,28 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                 </button>
               ))}
               
-              <div className="pt-6 mt-2 border-t border-slate-800/50">
-                <div className="flex items-center justify-between px-2 text-sm text-slate-500 font-mono">
-                  <span>System Status</span>
-                  <span className="flex items-center gap-2 text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Operational
-                  </span>
-                </div>
+              <div className="pt-6 mt-2 border-t border-slate-800/50 space-y-3">
+                 {user ? (
+                   isPro ? (
+                     <div className="px-4 py-2 bg-brand-500/10 rounded-xl text-brand-300 text-center font-mono">
+                       Current Plan: PRO
+                     </div>
+                   ) : (
+                     <button 
+                       onClick={() => handleNavClick('pricing')}
+                       className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl text-white font-bold"
+                     >
+                       Upgrade to Pro
+                     </button>
+                   )
+                 ) : (
+                   <button 
+                     onClick={() => handleNavClick('login')}
+                     className="w-full py-3 bg-slate-800 rounded-xl text-white font-bold"
+                   >
+                     Login / Signup
+                   </button>
+                 )}
               </div>
             </div>
           </div>
@@ -165,15 +199,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <p className="text-slate-500 text-sm leading-relaxed">
                 The advanced intelligence suite for creators who treat YouTube as a business, not a hobby.
               </p>
-              <div className="flex gap-4 pt-2">
-                 {/* Social placeholders */}
-                 {['twitter', 'github', 'discord'].map(social => (
-                   <div key={social} className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 hover:text-brand-400 hover:border-brand-500/50 cursor-pointer transition-all">
-                     <span className="sr-only">{social}</span>
-                     <div className="w-4 h-4 bg-current rounded-sm opacity-50"></div>
-                   </div>
-                 ))}
-              </div>
             </div>
 
             {/* Tools Column */}
@@ -182,8 +207,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('keywords')}>Keyword Explorer</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('thumbnail-gen')}>Thumbnail AI</li>
+                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('thumbnail-dl')}>Thumbnail Downloader</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('script')}>Script Writer</li>
-                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('competitors')}>Competitor Spy</li>
               </ul>
             </div>
 
@@ -193,8 +218,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('about')}>About Us</li>
                 <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('contact')}>Contact Support</li>
-                <li className="hover:text-brand-400 cursor-pointer">API Status</li>
-                <li className="hover:text-brand-400 cursor-pointer">Pricing</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('pricing')}>Pricing Plans</li>
               </ul>
             </div>
 
@@ -204,7 +228,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Privacy Policy</li>
                 <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Terms of Service</li>
-                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Cookie Policy</li>
                 <li className="flex items-center gap-2 mt-4 text-xs text-slate-600">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   Systems Operational
@@ -223,6 +246,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
           </div>
         </div>
       </footer>
+      
+      {/* Global Ad Banner */}
+      <AdBanner />
     </div>
   );
 };
