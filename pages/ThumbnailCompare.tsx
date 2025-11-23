@@ -37,7 +37,6 @@ export const ThumbnailCompare: React.FC = () => {
       }
     } catch (e: any) {
       console.error("Comparison Error:", e);
-      // Show the actual error message to help debugging (e.g. 404, 401)
       setError(e.message || "Comparison failed. Please check your API Key and try again.");
     } finally {
       setLoading(false);
@@ -50,7 +49,7 @@ export const ThumbnailCompare: React.FC = () => {
       
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Thumbnail A/B Simulator</h2>
-        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span>.</p>
+        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span> via OpenRouter.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -80,9 +79,9 @@ export const ThumbnailCompare: React.FC = () => {
           {loading ? <Spinner /> : 'Predict Winner'}
         </Button>
         {error && (
-          <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-lg max-w-xl mx-auto">
+          <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-lg max-w-xl mx-auto animate-fade-in">
             <p className="text-rose-400 font-medium">Error: {error}</p>
-            <p className="text-xs text-rose-500/70 mt-1">Check console for details.</p>
+            <p className="text-xs text-rose-500/70 mt-1">If using OpenRouter, ensure your model (x-ai/grok-2-vision-1212) is available on your plan.</p>
           </div>
         )}
       </div>
@@ -95,7 +94,7 @@ export const ThumbnailCompare: React.FC = () => {
           </Card>
           
           {/* SAFE RENDERING: Use optional chaining (?.) to prevent crash if breakdown is missing */}
-          {result?.breakdown && result.breakdown.length > 0 ? (
+          {result?.breakdown && Array.isArray(result.breakdown) && result.breakdown.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-4">
               {result.breakdown.map((b, i) => (
                 <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">
@@ -105,7 +104,9 @@ export const ThumbnailCompare: React.FC = () => {
               ))}
             </div>
           ) : (
-             <p className="text-center text-slate-500 text-sm">Detailed breakdown metrics unavailable for this comparison.</p>
+             <div className="text-center p-4 border border-slate-800 rounded-lg bg-slate-900/50">
+               <p className="text-slate-500 text-sm">Detailed breakdown metrics unavailable for this comparison.</p>
+             </div>
           )}
         </div>
       )}

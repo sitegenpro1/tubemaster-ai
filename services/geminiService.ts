@@ -1,25 +1,28 @@
-
-import { GoogleGenAI } from "@google/genai";
 import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult, ThumbnailCompareResult } from "../types";
 
 // --- CONFIGURATION ---
 
-// Helper to get keys safely in Vite and Vercel environments
 const getEnv = (key: string) => {
-  // Check Vite's import.meta.env
+  // 1. Try Vite's import.meta.env
   const meta = import.meta as any;
-  if (typeof meta !== 'undefined' && meta.env && meta.env[key]) {
+  if (meta && meta.env && meta.env[key]) {
     return meta.env[key];
   }
-  // Check standard process.env (fallback for some build steps)
+  // 2. Try standard process.env (Vercel/Node)
   if (typeof process !== 'undefined' && process.env && process.env[key]) {
     return process.env[key];
   }
   return '';
 };
 
-// Initialize Gemini (Only for other tools, not for Thumbnail Compare)
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Use OpenRouter for all text/vision logic
+const API_KEY = getEnv('VITE_OPENROUTER_API_KEY');
+const SITE_URL = 'https://tubemaster.ai'; // Required by OpenRouter
+const SITE_NAME = 'TubeMaster AI';
+
+// Models
+const TEXT_MODEL = "google/gemini-2.0-flash-lite-preview-02-05:free"; // High quality, free tier on OpenRouter
+const VISION_MODEL = "x-ai/grok-2-vision-1212"; // User requested Grok for Vision
 
 // --- CORE HELPERS ---
 
@@ -27,18 +30,16 @@ const cleanJson = (text: string): string => {
   if (!text) return "{}";
   // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  // Remove thinking traces if any
+  // Remove thinking traces
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
-  // Find the first '{' and last '}'
+  // Attempt to find valid JSON object
   const firstBrace = clean.indexOf('{');
   const lastBrace = clean.lastIndexOf('}');
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     return clean.substring(firstBrace, lastBrace + 1);
   }
-  
-  // If no braces found, return original (might be raw json) or empty object
   return firstBrace !== -1 ? clean : "{}";
 };
 
@@ -62,7 +63,7 @@ const compressImage = (base64Str: string): Promise<string> => {
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       } else {
         resolve(base64Str);
       }
@@ -71,67 +72,44 @@ const compressImage = (base64Str: string): Promise<string> => {
   });
 };
 
-// --- GROK / OPENROUTER HELPERS ---
+// --- API CALLER (Replaces GoogleGenAI SDK) ---
 
-const callOpenRouterGrok = async (systemPrompt: string, userPrompt: string, images?: string[]): Promise<string> => {
-  const openRouterKey = getEnv('VITE_OPENROUTER_API_KEY');
-  
-  if (!openRouterKey) {
-    throw new Error("Missing VITE_OPENROUTER_API_KEY. Please set this in your environment variables.");
+const callOpenRouter = async (
+  messages: any[], 
+  model: string = TEXT_MODEL, 
+  jsonMode: boolean = true
+): Promise<string> => {
+  if (!API_KEY) {
+    throw new Error("Missing VITE_OPENROUTER_API_KEY. Please add it to Vercel Environment Variables.");
   }
-
-  const messages: any[] = [
-    { role: "system", content: systemPrompt },
-  ];
-
-  if (images && images.length > 0) {
-    const content = [
-      { type: "text", text: userPrompt },
-      ...images.map(img => ({
-        type: "image_url",
-        image_url: { url: img } // OpenRouter expects data URI directly
-      }))
-    ];
-    messages.push({ role: "user", content });
-  } else {
-    messages.push({ role: "user", content: userPrompt });
-  }
-
-  // Model ID as requested
-  const MODEL = "x-ai/grok-2-vision-1212";
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${openRouterKey}`,
+      "Authorization": `Bearer ${API_KEY}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://tubemaster.ai", 
-      "X-Title": "TubeMaster AI"
+      "HTTP-Referer": SITE_URL,
+      "X-Title": SITE_NAME,
     },
     body: JSON.stringify({
-      model: MODEL, 
+      model: model,
       messages: messages,
-      temperature: 0.5, // Lower temperature for more consistent JSON
-      response_format: { type: "json_object" } 
+      response_format: jsonMode ? { type: "json_object" } : undefined,
+      temperature: 0.7,
+      max_tokens: 4000
     })
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    // Throwing a detailed error helps the UI show what happened (e.g., 404, 401)
-    throw new Error(`OpenRouter API Error (${response.status}): ${errorText}`);
+    const errText = await response.text();
+    console.error("OpenRouter Error:", response.status, errText);
+    throw new Error(`AI API Error (${response.status}): ${errText}`);
   }
 
-  const json = await response.json();
-  const content = json.choices?.[0]?.message?.content;
-  
-  if (!content) {
-    throw new Error("OpenRouter returned an empty response.");
-  }
-
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "";
   return content;
 };
-
 
 // --- EXPORTED SERVICES ---
 
@@ -142,14 +120,10 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     Generate 10 highly specific keywords/tags.
     Return strictly a JSON object: { "keywords": [ { "keyword": "...", "searchVolume": "...", "difficulty": 50, "opportunityScore": 80, "trend": "Rising", "intent": "Educational", "cpc": "$1.20", "competitionDensity": "Medium", "topCompetitor": "Channel Name", "videoAgeAvg": "2 years", "ctrPotential": "High" } ] }
   `;
+  
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: { responseMimeType: 'application/json' }
-    });
-    
-    const parsed = JSON.parse(cleanJson(response.text || "{}"));
+    const text = await callOpenRouter([{ role: "user", content: prompt }]);
+    const parsed = JSON.parse(cleanJson(text));
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
     console.error("Keyword find error", e);
@@ -158,43 +132,18 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
 };
 
 export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
-  let contextData = "";
+  // We'll skip the scraping layer for now to simplify and ensure Vercel compatibility, 
+  // relying on AI to infer from the structure provided or just the prompt.
+  // In a real generic implementation, we'd assume the user might paste just the name if scraping fails.
   
-  // 1. Web Scraping Layer
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
-    const response = await fetch(proxyUrl);
-    
-    if (response.ok) {
-      const data = await response.json();
-      const html = data.contents;
-      
-      const titleMatch = html.match(/<title>(.*?)<\/title>/);
-      const descMatch = html.match(/name="description" content="(.*?)"/);
-      const keywordsMatch = html.match(/name="keywords" content="(.*?)"/);
-      
-      const title = titleMatch ? titleMatch[1] : "Unknown Channel";
-      const description = descMatch ? descMatch[1] : "";
-      const keywords = keywordsMatch ? keywordsMatch[1] : "";
-      
-      contextData = `Channel Name: ${title}\nDescription: ${description}\nKeywords: ${keywords}`;
-    }
-  } catch (e) {
-    console.warn("Scraping failed, proceeding with AI inference only.", e);
-    contextData = `Channel URL: ${channelUrl} (Metadata could not be scraped)`;
-  }
-
-  // 2. AI Reasoning Layer
   const prompt = `
-    Analyze this competitor channel based on the available data:
-    ${contextData.substring(0, 2000)}
+    Analyze the YouTube channel URL: "${channelUrl}".
+    If you cannot access the live URL, infer the likely content strategy based on the channel name/handle implied by the URL.
     
-    If data is scarce, infer based on the channel name or likely niche.
-    
-    Task: Provide a strategic analysis.
+    Task: Provide a strategic analysis for a competitor.
     Return JSON:
     {
-      "channelName": "...",
+      "channelName": "Inferred Name",
       "subscriberEstimate": "e.g. 100k-500k",
       "strengths": ["strength 1", "strength 2", "strength 3"],
       "weaknesses": ["weakness 1", "weakness 2", "weakness 3"],
@@ -204,13 +153,13 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     }
   `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  
-  return JSON.parse(cleanJson(response.text || "{}"));
+  try {
+    const text = await callOpenRouter([{ role: "user", content: prompt }]);
+    return JSON.parse(cleanJson(text));
+  } catch (e) {
+    console.error("Analysis error", e);
+    throw new Error("Failed to analyze competitor.");
+  }
 };
 
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
@@ -219,68 +168,75 @@ export const generateScript = async (title: string, audience: string): Promise<S
     Structure: Hook -> Context -> Value -> Pattern Interrupt -> Payoff.
     Return JSON: { "title": "...", "estimatedDuration": "...", "targetAudience": "...", "sections": [ { "title": "...", "content": "...", "duration": "...", "visualCue": "...", "logicStep": "..." } ] }
   `;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  return JSON.parse(cleanJson(response.text || "{}"));
+  
+  try {
+    const text = await callOpenRouter([{ role: "user", content: prompt }]);
+    return JSON.parse(cleanJson(text));
+  } catch (e) {
+    console.error("Script error", e);
+    throw new Error("Failed to generate script.");
+  }
 };
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
   const prompt = `Generate 10 click-worthy, viral-style YouTube titles for: "${topic}". Return JSON: { "titles": ["..."] }`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  const parsed = JSON.parse(cleanJson(response.text || "{}"));
-  return parsed.titles || [];
+  
+  try {
+    const text = await callOpenRouter([{ role: "user", content: prompt }]);
+    const parsed = JSON.parse(cleanJson(text));
+    return parsed.titles || [];
+  } catch (e) {
+    console.error("Title gen error", e);
+    return [];
+  }
 };
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
   const prompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt
-  });
-  return response.text || "";
+  
+  try {
+    // We don't need JSON mode for this simple text response
+    const text = await callOpenRouter([{ role: "user", content: prompt }], TEXT_MODEL, false);
+    return text;
+  } catch (e) {
+    return "Could not determine best time.";
+  }
 };
 
+// REPLACEMENT: Use Pollinations.ai (Flux) instead of Gemini Image
+// This avoids the need for a Google API Key for images and is free/unlimited.
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
-  
+
+  // 1. Optimize Prompt if requested (Text only)
   if (optimize) {
     try {
-      const optimResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Optimize this image prompt for an AI image generator. Make it highly detailed. Prompt: "${prompt}". Style: ${style}, ${mood}. Output ONLY text.`
-      });
-      if (optimResponse.text) {
-        finalPrompt = optimResponse.text;
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [{ text: finalPrompt }]
-    }
-  });
-
-  let imageUrl = "";
-  if (response.candidates?.[0]?.content?.parts) {
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-        break;
-      }
+      const optimPrompt = `Optimize this image prompt for an AI image generator (Flux). Make it highly detailed, visual, and click-worthy. Prompt: "${prompt}". Style: ${style}, ${mood}. Output ONLY the raw prompt text, no reasoning.`;
+      finalPrompt = await callOpenRouter([{ role: "user", content: optimPrompt }], TEXT_MODEL, false);
+    } catch (e) {
+      console.warn("Prompt optimization failed, using original.");
     }
   }
 
-  if (!imageUrl) {
-    throw new Error("No image generated by Gemini");
+  // 2. Generate Image URL via Pollinations
+  // Pollinations doesn't require an async fetch to get bytes, we just construct the URL.
+  // We append random seed to ensure new images on re-rolls.
+  const seed = Math.floor(Math.random() * 1000000);
+  const encodedPrompt = encodeURIComponent(`${finalPrompt}, ${style} style, ${mood} atmosphere, 4k, youtube thumbnail`);
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&seed=${seed}&nologo=true`;
+
+  // We do a quick fetch just to ensure the service is up/image generates, 
+  // though typically we can just return the URL. 
+  // For better UX, let's preload it.
+  try {
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imageUrl;
+    });
+  } catch (e) {
+    // If preload fails, we still return URL, browser might show broken image icon but user can retry
   }
 
   return {
@@ -292,21 +248,30 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   };
 };
 
-// Strictly uses Grok via OpenRouter for Thumbnail Comparison. No Fallback.
 export const compareThumbnailsVision = async (imgA: string, imgB: string): Promise<ThumbnailCompareResult> => {
   const [cA, cB] = await Promise.all([compressImage(imgA), compressImage(imgB)]);
   
-  const system = "You are an expert YouTube Strategist with deep knowledge of CTR (Click Through Rate) psychology. You analyze thumbnails.";
-  const user = `Analyze these two thumbnails. Which has higher CTR potential? Compare contrast, text readability, facial emotion, and curiosity gap. Return strictly JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
+  const system = "You are an expert YouTube Strategist. Compare these two thumbnails for CTR potential.";
+  const userPrompt = `Analyze these two thumbnails. Which has higher CTR potential? Compare contrast, text readability, facial emotion, and curiosity gap. Return strictly JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
   
-  console.log("Calling OpenRouter with Grok Vision...");
-  
+  const messages = [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: userPrompt },
+        { type: "image_url", image_url: { url: cA } },
+        { type: "image_url", image_url: { url: cB } }
+      ]
+    }
+  ];
+
   try {
-    const jsonStr = await callOpenRouterGrok(system, user, [cA, cB]);
-    return JSON.parse(cleanJson(jsonStr));
+    // Using the user-preferred Vision model
+    const text = await callOpenRouter(messages, VISION_MODEL, true);
+    return JSON.parse(cleanJson(text));
   } catch (error) {
-    console.error("Grok Vision Analysis Failed:", error);
-    // Rethrow to let the UI handle the error state instead of crashing
+    console.error("Vision Analysis Failed:", error);
     throw error;
   }
 };
