@@ -98,12 +98,12 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       />
       
       {/* Hero Section */}
-      <section className="relative min-h-[600px] flex items-center justify-center pt-10">
+      <section className="relative min-h-[600px] flex items-center justify-center pt-10 overflow-hidden">
         {/* Abstract Background Mesh */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-brand-600/20 blur-[120px] rounded-full -z-10 opacity-50 animate-pulse" style={{ animationDuration: '5s' }}></div>
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/10 blur-[100px] rounded-full -z-10"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[1000px] h-[300px] md:h-[600px] bg-brand-600/20 blur-[60px] md:blur-[120px] rounded-full -z-10 opacity-50 animate-pulse" style={{ animationDuration: '5s' }}></div>
+        <div className="absolute top-0 right-0 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-purple-600/10 blur-[50px] md:blur-[100px] rounded-full -z-10"></div>
         
-        <div className="text-center max-w-4xl mx-auto space-y-8 px-4">
+        <div className="text-center max-w-4xl mx-auto space-y-8 px-4 relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/50 border border-brand-500/30 backdrop-blur-md mb-4 animate-fade-in">
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
@@ -138,16 +138,16 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Social Proof / Stats */}
           <div className="grid grid-cols-3 gap-8 pt-12 border-t border-slate-800/50 mt-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '500ms' }}>
              <div>
-               <div className="text-3xl font-bold text-white">10+</div>
-               <div className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Logic Models</div>
+               <div className="text-2xl md:text-3xl font-bold text-white">10+</div>
+               <div className="text-[10px] md:text-xs uppercase tracking-widest text-slate-500 font-semibold">Logic Models</div>
              </div>
              <div>
-               <div className="text-3xl font-bold text-white">4K</div>
-               <div className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Image Gen</div>
+               <div className="text-2xl md:text-3xl font-bold text-white">4K</div>
+               <div className="text-[10px] md:text-xs uppercase tracking-widest text-slate-500 font-semibold">Image Gen</div>
              </div>
              <div>
-               <div className="text-3xl font-bold text-white">24/7</div>
-               <div className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Availability</div>
+               <div className="text-2xl md:text-3xl font-bold text-white">24/7</div>
+               <div className="text-[10px] md:text-xs uppercase tracking-widest text-slate-500 font-semibold">Availability</div>
              </div>
           </div>
         </div>

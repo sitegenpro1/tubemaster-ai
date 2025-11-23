@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Spinner } from '../components/UI';
 import { findKeywords } from '../services/geminiService';
@@ -43,24 +42,24 @@ export const KeywordFinder: React.FC = () => {
     <div className="space-y-10 pb-20">
       <SEO title="Keyword Explorer" description="Deep logic keyword research." path="/keywords" />
       
-      <div className="text-center py-10 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-blue-500/10 blur-[100px] -z-10 rounded-full"></div>
+      <div className="text-center py-10 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] bg-blue-500/10 blur-[100px] -z-10 rounded-full"></div>
         <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
           Keyword <span className="text-brand-400">Deep Dive</span>
         </h2>
         <p className="text-lg text-slate-400">Powered by Groq Llama 3 (70b) Reasoning.</p>
       </div>
 
-      <div className="max-w-3xl mx-auto space-y-4">
-        <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 flex gap-3 items-center shadow-2xl">
+      <div className="max-w-3xl mx-auto space-y-4 px-2">
+        <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center shadow-2xl">
           <input 
-            className="flex-1 bg-transparent border-none outline-none text-white text-lg px-4 py-2 placeholder:text-slate-600"
+            className="flex-1 bg-transparent border-none outline-none text-white text-base md:text-lg px-4 py-2 placeholder:text-slate-600 w-full"
             placeholder="Enter niche (e.g., 'Vegan Meal Prep')"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <Button onClick={handleSearch} disabled={loading || !topic} className="px-8 py-3">
+          <Button onClick={handleSearch} disabled={loading || !topic} className="px-8 py-3 w-full sm:w-auto">
             {loading ? <Spinner /> : 'Research'}
           </Button>
         </div>
@@ -73,13 +72,13 @@ export const KeywordFinder: React.FC = () => {
             <h3 className="text-white font-bold">Results</h3>
             <button onClick={copyList} className="text-brand-400 text-sm hover:text-brand-300">Copy All</button>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="bg-slate-950 text-slate-400 text-sm uppercase">
                   <th className="p-4">Keyword</th>
-                  <th className="p-4 hidden sm:table-cell">Volume</th>
-                  <th className="p-4 hidden sm:table-cell">KD</th>
+                  <th className="p-4">Volume</th>
+                  <th className="p-4">KD</th>
                   <th className="p-4">Score</th>
                 </tr>
               </thead>
@@ -88,8 +87,8 @@ export const KeywordFinder: React.FC = () => {
                   <React.Fragment key={i}>
                     <tr onClick={() => setExpandedRow(expandedRow === i ? null : i)} className="cursor-pointer hover:bg-slate-800/50 transition-colors">
                       <td className="p-4 font-medium text-slate-200">{r.keyword}</td>
-                      <td className="p-4 hidden sm:table-cell text-slate-400">{r.searchVolume}</td>
-                      <td className="p-4 hidden sm:table-cell">
+                      <td className="p-4 text-slate-400">{r.searchVolume}</td>
+                      <td className="p-4">
                         <div className="w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
                           <div className={`h-full ${r.difficulty > 60 ? 'bg-rose-500' : r.difficulty > 30 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{width: `${r.difficulty}%`}}></div>
                         </div>

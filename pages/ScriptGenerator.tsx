@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, Input, Button, Spinner, Select, Badge } from '../components/UI';
 import { generateScript } from '../services/geminiService';
@@ -27,10 +26,10 @@ export const ScriptGenerator: React.FC = () => {
   };
 
   return (
-    <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-140px)] pb-10">
+    <div className="grid lg:grid-cols-12 gap-8 h-auto lg:h-[calc(100vh-140px)] pb-10">
       <SEO title="Script Writer" description="AI Script Generator" path="/script" />
       
-      <div className="lg:col-span-4 space-y-6 h-full overflow-y-auto custom-scrollbar pr-2">
+      <div className="lg:col-span-4 space-y-6 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2">
         <Card title="Script Settings" className="shadow-xl">
           <div className="space-y-5">
             <div>
@@ -53,11 +52,11 @@ export const ScriptGenerator: React.FC = () => {
         </Card>
       </div>
 
-      <div className="lg:col-span-8 h-full bg-slate-950/50 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+      <div className="lg:col-span-8 h-[600px] lg:h-full bg-slate-950/50 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
         {script ? (
           <>
             <div className="p-4 border-b border-slate-800 bg-slate-900 flex justify-between items-center">
-              <h3 className="font-bold text-white truncate">{script.title}</h3>
+              <h3 className="font-bold text-white truncate max-w-[200px] md:max-w-md">{script.title}</h3>
               <Badge>{script.estimatedDuration}</Badge>
             </div>
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">

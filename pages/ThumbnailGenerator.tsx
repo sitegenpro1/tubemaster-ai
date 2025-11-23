@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, Button, Spinner } from '../components/UI';
 import { generateThumbnail } from '../services/geminiService';
@@ -44,14 +43,14 @@ export const ThumbnailGenerator: React.FC = () => {
   };
 
   return (
-    <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-140px)] pb-10">
+    <div className="grid lg:grid-cols-12 gap-8 h-auto lg:h-[calc(100vh-140px)] pb-10">
       <SEO 
         title="Unlimited 4K Thumbnail Generator" 
         description="Create high-CTR YouTube thumbnails for free using Flux."
         path="/thumbnail-gen"
       />
       {/* Left Control Panel */}
-      <div className="lg:col-span-4 h-full overflow-y-auto custom-scrollbar pr-2 space-y-6">
+      <div className="lg:col-span-4 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2 space-y-6">
         <Card title="Design Studio" className="border-brand-500/20 shadow-2xl shadow-black/50">
           <div className="space-y-6">
             {/* Prompt */}
@@ -124,7 +123,7 @@ export const ThumbnailGenerator: React.FC = () => {
       </div>
 
       {/* Right Preview Area */}
-      <div className="lg:col-span-8 flex flex-col h-full gap-6">
+      <div className="lg:col-span-8 flex flex-col h-[500px] lg:h-full gap-6">
         {/* Main Canvas */}
         <div className="flex-1 bg-slate-950 rounded-2xl border border-slate-800 relative group overflow-hidden shadow-2xl flex items-center justify-center">
           {loading ? (

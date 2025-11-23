@@ -34,7 +34,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   ];
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-100">
+    <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-100 overflow-x-hidden">
       
       {/* Sticky Header */}
       <header 
@@ -144,7 +144,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
       {/* Footer */}
       <footer className="border-t border-slate-800/60 bg-[#020617] relative overflow-hidden">
         {/* Abstract footer glow */}
-        <div className="absolute bottom-0 left-1/4 w-[500px] h-[300px] bg-brand-600/5 blur-[120px] rounded-full pointer-events-none"></div>
+        <div className="absolute bottom-0 left-1/4 w-[300px] md:w-[500px] h-[300px] bg-brand-600/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8">
