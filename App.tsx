@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { KeywordFinder } from './pages/KeywordFinder';
@@ -13,13 +13,41 @@ import { Contact } from './pages/Contact';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 
 function App() {
-  // Simple state-based navigation instead of react-router
-  const [currentView, setCurrentView] = useState('home');
+  // Initialize state from URL hash to handle refreshes
+  const getInitialView = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.hash.replace('#', '') || 'home';
+    }
+    return 'home';
+  };
+
+  const [currentView, setCurrentView] = useState(getInitialView);
+
+  // Handle browser back/forward buttons and initial load
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '') || 'home';
+      setCurrentView(hash);
+      window.scrollTo(0, 0); // Scroll to top on hash change (back button)
+    };
+
+    // Initial scroll check
+    window.scrollTo(0, 0);
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Wrapper for navigation to ensure URL updates and scrolling
+  const handleNavigate = (view: string) => {
+    window.location.hash = view; // This triggers the hashchange event above
+    // We don't need to setCurrentView here because the event listener handles it
+  };
 
   const renderView = () => {
     switch (currentView) {
       case 'home':
-        return <Home onNavigate={setCurrentView} />;
+        return <Home onNavigate={handleNavigate} />;
       case 'keywords':
         return <KeywordFinder />;
       case 'script':
@@ -39,12 +67,12 @@ function App() {
       case 'privacy':
         return <PrivacyPolicy />;
       default:
-        return <Home onNavigate={setCurrentView} />;
+        return <Home onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <Layout currentView={currentView} onNavigate={setCurrentView}>
+    <Layout currentView={currentView} onNavigate={handleNavigate}>
       {renderView()}
     </Layout>
   );

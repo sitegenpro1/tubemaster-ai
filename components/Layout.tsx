@@ -22,7 +22,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   const handleNavClick = (view: string) => {
     onNavigate(view);
     setIsMobileMenuOpen(false);
-    window.scrollTo(0, 0);
   };
 
   const navItems = [
@@ -32,6 +31,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
     { name: 'Script Writer', id: 'script' },
     { name: 'Compare', id: 'compare' },
     { name: 'Competitors', id: 'competitors' },
+    { name: 'About', id: 'about' },
+    { name: 'Contact', id: 'contact' },
   ];
 
   return (
@@ -123,13 +124,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                   </div>
                 </button>
               ))}
-              {/* Added mobile links for new pages */}
-              <div className="border-t border-slate-800/50 pt-4 space-y-2">
-                 <button onClick={() => handleNavClick('about')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">About Us</button>
-                 <button onClick={() => handleNavClick('contact')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">Contact</button>
-                 <button onClick={() => handleNavClick('privacy')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">Privacy Policy</button>
-              </div>
-
+              
               <div className="pt-6 mt-2 border-t border-slate-800/50">
                 <div className="flex items-center justify-between px-2 text-sm text-slate-500 font-mono">
                   <span>System Status</span>
