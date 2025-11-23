@@ -5,18 +5,96 @@ import { compareThumbnailsVision } from '../services/geminiService';
 import { ThumbnailCompareResult } from '../types';
 import { SEO } from '../components/SEO';
 
+// Client-side compression utility
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_DIM = 1024;
+
+        // Maintain aspect ratio while resizing
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            reject(new Error("Canvas context unavailable"));
+            return;
+        }
+        
+        // Draw white background for transparency handling (PNG -> JPEG)
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const MAX_BYTES = 600 * 1024; // 600KB limit for API safety
+        let quality = 0.95;
+        
+        // Iterative compression to meet size requirements
+        const attemptCompression = (q: number) => {
+            const dataUrl = canvas.toDataURL('image/jpeg', q);
+            // Estimate size: (Base64 Chars - Header) * 0.75 = Bytes
+            const head = 'data:image/jpeg;base64,';
+            const size = Math.round((dataUrl.length - head.length) * 0.75);
+            
+            if (size <= MAX_BYTES) {
+                resolve(dataUrl);
+            } else if (q <= 0.3) {
+                // If quality drops too low and still big, fail gracefully
+                reject(new Error("Image too large"));
+            } else {
+                // Step down quality
+                attemptCompression(q - 0.15);
+            }
+        };
+        
+        attemptCompression(quality);
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+    };
+    reader.onerror = () => reject(new Error("File read failed"));
+  });
+};
+
 export const ThumbnailCompare: React.FC = () => {
   const [imgA, setImgA] = useState<string | null>(null);
   const [imgB, setImgB] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false); // New state for compression status
   const [result, setResult] = useState<ThumbnailCompareResult | null>(null);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>, setImg: (s: string) => void) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, setImg: (s: string) => void) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImg(reader.result as string);
-      reader.readAsDataURL(file);
+      setProcessing(true);
+      try {
+        const compressedDataUrl = await compressImage(file);
+        setImg(compressedDataUrl);
+      } catch (err) {
+        console.error("Compression failed:", err);
+        alert("Please upload images smaller than 600 KB");
+      } finally {
+        setProcessing(false);
+      }
     }
   };
 
@@ -51,11 +129,27 @@ export const ThumbnailCompare: React.FC = () => {
         ].map((item) => (
           <Card key={item.id} title={`Thumbnail ${item.id}`} className={item.win ? 'border-green-500 ring-1 ring-green-500/50' : ''}>
             <div 
-              onClick={() => document.getElementById(`file${item.id}`)?.click()}
-              className="aspect-video bg-slate-950 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center cursor-pointer hover:border-slate-600 overflow-hidden relative"
+              onClick={() => !processing && document.getElementById(`file${item.id}`)?.click()}
+              className={`aspect-video bg-slate-950 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center hover:border-slate-600 overflow-hidden relative transition-colors ${processing ? 'cursor-wait opacity-50' : 'cursor-pointer'}`}
             >
-              {item.img ? <img src={item.img} className="w-full h-full object-cover" /> : <span className="text-4xl">🖼️</span>}
-              <input id={`file${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e, item.set)} />
+              {item.img ? (
+                <img src={item.img} className="w-full h-full object-cover" /> 
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-4xl">🖼️</span>
+                  {processing && <span className="text-xs text-brand-400 animate-pulse">Compressing...</span>}
+                </div>
+              )}
+              
+              <input 
+                id={`file${item.id}`} 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={(e) => handleFile(e, item.set)}
+                disabled={processing}
+              />
+              
               {item.score !== undefined && (
                 <div className="absolute top-2 right-2 bg-black/80 px-3 py-1 rounded text-xl font-bold text-white">
                   {item.score}/10
@@ -67,8 +161,12 @@ export const ThumbnailCompare: React.FC = () => {
       </div>
 
       <div className="text-center">
-        <Button onClick={handleCompare} disabled={loading || !imgA || !imgB} className="px-10 py-4 text-lg rounded-full">
-          {loading ? <Spinner /> : 'Predict Winner'}
+        <Button 
+          onClick={handleCompare} 
+          disabled={loading || processing || !imgA || !imgB} 
+          className="px-10 py-4 text-lg rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? <Spinner /> : processing ? 'Processing Images...' : 'Predict Winner'}
         </Button>
       </div>
 
