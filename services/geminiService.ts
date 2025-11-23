@@ -58,10 +58,6 @@ const callAI = async (
   jsonMode: boolean = true
 ): Promise<string> => {
   
-  // STRICT PROVIDER LOGIC:
-  // GROQ -> Always use Groq Endpoint + Groq Key
-  // OPENROUTER -> Always use OpenRouter Endpoint + OpenRouter Key
-  
   const isGroq = provider === 'GROQ';
   const apiKey = isGroq ? getGroqKey() : getOpenRouterKey();
   const endpoint = isGroq
@@ -79,7 +75,6 @@ const callAI = async (
     "Content-Type": "application/json",
   };
 
-  // Add OpenRouter specific headers if we are hitting that endpoint
   if (!isGroq) {
     headers["HTTP-Referer"] = "https://tubemaster.ai";
     headers["X-Title"] = "TubeMaster AI";
@@ -99,7 +94,6 @@ const callAI = async (
 
     if (!response.ok) {
       const err = await response.text();
-      // Parse error if possible to show friendly message
       let friendlyError = err;
       try {
         const errObj = JSON.parse(err);
@@ -147,14 +141,13 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
 };
 
 export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Promise<CompetitorAnalysisResult> => {
-  // Relaxed Validation: Accept if we have a channel object, even if title is a fallback
+  // Relaxed Validation: Accept if we have a channel object
   if (!scrapedData || !scrapedData.channel) {
     throw new Error("Invalid channel data provided to AI analysis.");
   }
 
   const systemPrompt = "You are a YouTube Strategist. Output strictly JSON.";
   
-  // Create a condensed summary of videos for the prompt to save tokens
   const videoSummary = scrapedData.recentVideos.length > 0 
     ? scrapedData.recentVideos.map(v => `- "${v.title}" (${v.viewCount} views, ${v.publishedTimeText})`).join('\n')
     : "No recent videos found. Base analysis on general niche assumptions.";
@@ -193,6 +186,39 @@ export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Pro
   return JSON.parse(cleanJson(jsonStr));
 };
 
+// Fallback function when API fails
+export const estimateCompetitorAnalysis = async (query: string): Promise<CompetitorAnalysisResult> => {
+  const systemPrompt = "You are a YouTube Strategist. The user provided a channel handle or name, but live data is unavailable. You must generate a high-quality strategic analysis based on your internal knowledge of this channel (if famous) or by inferring the niche from the name.";
+  
+  const userPrompt = `
+    Channel Identifier: "${query}"
+    
+    Task:
+    1. Infer the likely niche (e.g., Gaming, Finance, Music, Vlog) based on the name.
+    2. Estimate likely subscriber count if famous, or default to "Unknown/Hidden" if generic.
+    3. Generate generic but high-value advice for this specific niche.
+    4. Identify "Evergreen" topics for this niche as "Top Performing".
+    
+    Output STRICT JSON:
+    {
+      "channelName": "${query}",
+      "subscriberEstimate": "Estimated",
+      "strengths": ["string (General niche strengths)"],
+      "weaknesses": ["string (Common niche pitfalls)"],
+      "contentGaps": ["string ( underserved topics in this niche)"],
+      "topPerformingTopics": ["string (Viral topics in this niche)"],
+      "actionPlan": "string (Strategic advice for this niche)"
+    }
+  `;
+
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+  ], true);
+
+  return JSON.parse(cleanJson(jsonStr));
+};
+
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
   const systemPrompt = "You are a professional YouTube Scriptwriter. Output strictly JSON.";
   const userPrompt = `
@@ -218,14 +244,12 @@ export const generateTitles = async (topic: string): Promise<string[]> => {
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
   const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
-  // Using generic mode (no JSON enforcement) for simple text
   return await callAI('GROQ', TEXT_MODEL, [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
 
-  // 1. Optimize Prompt with Groq (Text Tool)
   if (optimize) {
     try {
       finalPrompt = await callAI('GROQ', TEXT_MODEL, [{
@@ -237,11 +261,9 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
     }
   }
 
-  // 2. Generate Image using Pollinations.ai (FREE, UNLIMITED)
   const encodedPrompt = encodeURIComponent(finalPrompt);
   const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
 
-  // Pre-fetch check
   try { await fetch(imageUrl); } catch(e) {}
 
   return {
@@ -254,9 +276,6 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // STRICTLY USE OPENROUTER FOR VISION as requested
-  // We ignore the incoming provider arg to ensure safety, or default it.
-  
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
 

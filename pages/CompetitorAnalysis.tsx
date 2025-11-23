@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, Input, Button, Spinner, Badge } from '../components/UI';
-import { analyzeCompetitor } from '../services/geminiService';
+import { analyzeCompetitor, estimateCompetitorAnalysis } from '../services/geminiService';
 import { resolveChannelId, getChannelStats, getChannelVideos } from '../services/rapidApiService';
 import { CompetitorAnalysisResult, RapidFullAnalysisData } from '../types';
 import { SEO } from '../components/SEO';
@@ -28,31 +28,45 @@ export const CompetitorAnalysis: React.FC = () => {
     try {
       // 1. Resolve ID with new robust resolver
       const channelId = await resolveChannelId(url);
-      if (!channelId) throw new Error("Could not resolve Channel ID. Please try the full YouTube Channel URL.");
+      
+      let fullData: RapidFullAnalysisData | null = null;
 
-      // 2. Fetch Stats & Videos Parallel
-      const [stats, videos] = await Promise.all([
-        getChannelStats(channelId),
-        getChannelVideos(channelId)
-      ]);
-
-      // Check if critical stats are present
-      if (!stats) {
-        throw new Error("Failed to retrieve channel statistics.");
+      if (channelId) {
+        // 2. Fetch Stats & Videos Parallel
+        try {
+          const [stats, videos] = await Promise.all([
+            getChannelStats(channelId),
+            getChannelVideos(channelId)
+          ]);
+          
+          if (stats) {
+            fullData = { channel: stats, recentVideos: videos };
+            setScrapedData(fullData);
+          }
+        } catch (fetchErr) {
+          console.warn("Live data fetch failed, falling back to AI.");
+        }
       }
 
-      const fullData = { channel: stats, recentVideos: videos };
-      setScrapedData(fullData);
-
-      // 3. AI Analysis
+      // 3. AI Analysis (Live or Fallback)
       setStatus('analyzing_ai');
-      const result = await analyzeCompetitor(fullData);
-      setAiResult(result);
+      
+      if (fullData) {
+         // Standard Analysis with Live Data
+         const result = await analyzeCompetitor(fullData);
+         setAiResult(result);
+      } else {
+         // Fallback Analysis (Offline Mode)
+         const result = await estimateCompetitorAnalysis(url);
+         setAiResult(result);
+         setScrapedData(null); // Explicitly ensure UI knows we don't have scraped data
+      }
+
       setStatus('complete');
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Analysis failed. Ensure your RapidAPI Key is valid and has quota.");
+      setError(err.message || "Analysis failed completely. Please try again.");
       setStatus('idle');
     }
   };
@@ -107,38 +121,65 @@ export const CompetitorAnalysis: React.FC = () => {
         </div>
       )}
 
-      {status === 'analyzing_ai' && scrapedData && (
+      {status === 'analyzing_ai' && (
         <div className="text-center py-12 animate-pulse space-y-4">
            <div className="w-16 h-16 bg-brand-900/30 rounded-full mx-auto flex items-center justify-center text-3xl">🧠</div>
            <h3 className="text-xl font-bold text-white">AI Strategy Processing...</h3>
-           <p className="text-slate-400">Analyzing {scrapedData.recentVideos.length} videos from <span className="text-brand-400 font-bold">{scrapedData.channel.title}</span>.</p>
+           <p className="text-slate-400">
+             {scrapedData 
+               ? `Analyzing ${scrapedData.recentVideos.length} videos from ${scrapedData.channel.title}.`
+               : "Live data unavailable. Using AI estimation engine to infer strategy..."}
+           </p>
         </div>
       )}
 
       {/* Results */}
-      {status === 'complete' && scrapedData && aiResult && (
+      {status === 'complete' && aiResult && (
         <div className="space-y-8 animate-slide-up">
           
-          {/* Channel Overview Card */}
-          <div className="bg-slate-900/60 border border-slate-700 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 backdrop-blur-md">
-             {scrapedData.channel.avatar ? (
-               <img src={scrapedData.channel.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-slate-800 shadow-xl" />
-             ) : (
-                <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-4xl">📺</div>
-             )}
-             <div className="text-center md:text-left flex-1">
-               <h3 className="text-3xl font-extrabold text-white flex items-center justify-center md:justify-start gap-2">
-                 {scrapedData.channel.title}
-                 {scrapedData.channel.isVerified && <span className="text-blue-400 text-xl" title="Verified">✓</span>}
-               </h3>
-               <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3">
-                 <Badge color="blue">{scrapedData.channel.subscriberCount} Subs</Badge>
-                 <Badge color="purple">{scrapedData.channel.videoCount} Videos</Badge>
-                 <Badge color="green">Active</Badge>
+          {/* Channel Overview Card - CONDITIONAL Rendering */}
+          {scrapedData ? (
+            <div className="bg-slate-900/60 border border-slate-700 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 backdrop-blur-md">
+               {scrapedData.channel.avatar ? (
+                 <img src={scrapedData.channel.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-slate-800 shadow-xl" />
+               ) : (
+                  <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-4xl">📺</div>
+               )}
+               <div className="text-center md:text-left flex-1">
+                 <h3 className="text-3xl font-extrabold text-white flex items-center justify-center md:justify-start gap-2">
+                   {scrapedData.channel.title}
+                   {scrapedData.channel.isVerified && <span className="text-blue-400 text-xl" title="Verified">✓</span>}
+                 </h3>
+                 <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3">
+                   <Badge color="blue">{scrapedData.channel.subscriberCount} Subs</Badge>
+                   <Badge color="purple">{scrapedData.channel.videoCount} Videos</Badge>
+                   <Badge color="green">Live Data Active</Badge>
+                 </div>
+                 <p className="text-slate-400 mt-4 text-sm line-clamp-2 max-w-2xl">{scrapedData.channel.description}</p>
                </div>
-               <p className="text-slate-400 mt-4 text-sm line-clamp-2 max-w-2xl">{scrapedData.channel.description}</p>
+            </div>
+          ) : (
+             <div className="bg-slate-900/60 border border-amber-500/30 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 backdrop-blur-md relative overflow-hidden">
+               {/* Warning Banner */}
+               <div className="absolute top-0 left-0 w-full bg-amber-500/10 border-b border-amber-500/20 py-1 text-center text-amber-300 text-xs font-bold uppercase tracking-widest">
+                 Offline Mode Active
+               </div>
+
+               <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-4xl border-4 border-slate-700 mt-4 md:mt-0">⚡</div>
+               <div className="text-center md:text-left flex-1 mt-4 md:mt-0">
+                 <h3 className="text-3xl font-extrabold text-white">
+                   {aiResult.channelName}
+                 </h3>
+                 <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3">
+                   <Badge color="yellow">Live Data Unavailable</Badge>
+                   <Badge color="purple">AI Strategy Estimation</Badge>
+                 </div>
+                 <p className="text-slate-400 mt-4 text-sm max-w-2xl">
+                   We couldn't connect to the live YouTube API for this channel. The analysis below is estimated by our AI based on the channel name and general niche trends.
+                 </p>
+               </div>
              </div>
-          </div>
+          )}
 
           {/* AI Attack Plan */}
           <div className="grid lg:grid-cols-3 gap-8">
@@ -200,40 +241,42 @@ export const CompetitorAnalysis: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent Video Data Table */}
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800">
-              <h4 className="text-white font-bold">Analyzed Video Data</h4>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-400">
-                <thead className="bg-slate-950 text-xs uppercase font-bold">
-                  <tr>
-                    <th className="p-4">Video Title</th>
-                    <th className="p-4">Views</th>
-                    <th className="p-4">Published</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {scrapedData.recentVideos.length > 0 ? (
-                    scrapedData.recentVideos.map((v, i) => (
-                      <tr key={i} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="p-4 text-slate-200 font-medium max-w-md truncate" title={v.title}>{v.title}</td>
-                        <td className="p-4 font-mono text-brand-400">{v.viewCount}</td>
-                        <td className="p-4">{v.publishedTimeText}</td>
-                      </tr>
-                    ))
-                  ) : (
+          {/* Recent Video Data Table - Only Show if Scraped Data Exists */}
+          {scrapedData && (
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+              <div className="p-6 border-b border-slate-800">
+                <h4 className="text-white font-bold">Analyzed Video Data</h4>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="bg-slate-950 text-xs uppercase font-bold">
                     <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-500 italic">
-                        No recent videos found.
-                      </td>
+                      <th className="p-4">Video Title</th>
+                      <th className="p-4">Views</th>
+                      <th className="p-4">Published</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {scrapedData.recentVideos.length > 0 ? (
+                      scrapedData.recentVideos.map((v, i) => (
+                        <tr key={i} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="p-4 text-slate-200 font-medium max-w-md truncate" title={v.title}>{v.title}</td>
+                          <td className="p-4 font-mono text-brand-400">{v.viewCount}</td>
+                          <td className="p-4">{v.publishedTimeText}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-slate-500 italic">
+                          No recent videos found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
       )}
