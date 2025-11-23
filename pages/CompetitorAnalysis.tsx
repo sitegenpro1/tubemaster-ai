@@ -15,6 +15,8 @@ export const CompetitorAnalysis: React.FC = () => {
   const [aiResult, setAiResult] = useState<CompetitorAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isProcessing = status === 'fetching_data' || status === 'analyzing_ai';
+
   const handleAnalyze = async () => {
     if (!url) return;
 
@@ -33,6 +35,10 @@ export const CompetitorAnalysis: React.FC = () => {
         getChannelStats(channelId),
         getChannelVideos(channelId)
       ]);
+
+      if (stats.title === 'Unknown Channel' && videos.length === 0) {
+        throw new Error("API returned empty data. The channel might be private or the API limit reached.");
+      }
 
       const fullData = { channel: stats, recentVideos: videos };
       setScrapedData(fullData);
@@ -75,8 +81,8 @@ export const CompetitorAnalysis: React.FC = () => {
                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
              />
           </div>
-          <Button onClick={handleAnalyze} disabled={status !== 'idle' || !url} className="md:w-56 font-bold text-lg shadow-lg shadow-purple-900/20">
-            {status !== 'idle' ? <Spinner /> : 'Run Spy Tool 🕵️'}
+          <Button onClick={handleAnalyze} disabled={isProcessing || !url} className="md:w-56 font-bold text-lg shadow-lg shadow-purple-900/20">
+            {isProcessing ? <Spinner /> : 'Run Spy Tool 🕵️'}
           </Button>
         </div>
         
