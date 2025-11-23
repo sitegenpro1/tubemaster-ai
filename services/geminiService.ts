@@ -17,8 +17,9 @@ const getOpenRouterKey = () => {
 
 const cleanJson = (text: string): string => {
   if (!text) return "{}";
+  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  // Remove <think> tags if present (common in DeepSeek/Grok models)
+  // Remove <think> tags (DeepSeek/Reasoning models)
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
   const firstBrace = clean.indexOf('{');
@@ -30,7 +31,7 @@ const cleanJson = (text: string): string => {
   return clean;
 };
 
-// Generic Fetch Wrapper for Groq/OpenRouter to reduce code duplication
+// Generic Fetch Wrapper
 const callAI = async (
   provider: 'GROQ' | 'OPENROUTER',
   model: string,
@@ -42,9 +43,10 @@ const callAI = async (
     ? "https://api.groq.com/openai/v1/chat/completions" 
     : "https://openrouter.ai/api/v1/chat/completions";
 
-  if (!apiKey && provider !== 'GROQ') { 
-    // Allow Groq to fail gracefully or mock if needed, but here we throw
-    throw new Error(`Missing API Key for ${provider}`);
+  if (!apiKey) { 
+    console.warn(`Missing API Key for ${provider}`);
+    // Fallback error or mock could go here, but we throw to alert user
+    throw new Error(`Please add VITE_${provider}_API_KEY to your .env file.`);
   }
 
   try {
@@ -52,7 +54,12 @@ const callAI = async (
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        // OpenRouter specific headers
+        ...(provider === 'OPENROUTER' ? {
+          "HTTP-Referer": "https://tubemaster.ai",
+          "X-Title": "TubeMaster AI"
+        } : {})
       },
       body: JSON.stringify({
         model: model,
@@ -78,7 +85,7 @@ const callAI = async (
 // --- EXPORTED SERVICES ---
 
 export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
-  // Using Llama-3-70b via Groq for high intelligence + JSON adherence
+  // Use Llama 3 on Groq for speed and JSON reliability
   const systemPrompt = `You are a YouTube SEO expert. Return a valid JSON object containing an array "keywords".`;
   const userPrompt = `
     Topic: "${topic}"
@@ -97,7 +104,6 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
     console.error("Keyword find error", e);
-    // Return empty array to prevent UI crash
     return [];
   }
 };
@@ -107,6 +113,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
   
   // 1. Web Scraping Layer (Client-side proxy)
   try {
+    // Simple fetch to get basic meta data
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
     const response = await fetch(proxyUrl);
     if (response.ok) {
@@ -117,12 +124,12 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
       contextData = `Channel Title: ${titleMatch?.[1] || 'Unknown'}\nDescription: ${descMatch?.[1] || 'Unknown'}`;
     }
   } catch (e) {
-    console.warn("Scraping failed", e);
+    console.warn("Scraping failed, proceeding with URL only", e);
     contextData = `Channel URL: ${channelUrl}`;
   }
 
   // 2. AI Reasoning (Groq)
-  const systemPrompt = "You are a YouTube Strategist. output strictly JSON.";
+  const systemPrompt = "You are a YouTube Strategist. Output strictly JSON.";
   const userPrompt = `
     Analyze this competitor data: ${contextData.substring(0, 1000)}
     Provide a strategic analysis in this JSON format:
@@ -171,16 +178,16 @@ export const generateTitles = async (topic: string): Promise<string[]> => {
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
   const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
   // Using generic mode (no JSON enforcement) for simple text
-  return await callAI('GROQ', 'llama3-8b-8192', [{ role: "user", content: userPrompt }], false);
+  return await callAI('GROQ', 'llama3-70b-8192', [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
 
-  // 1. Optimize Prompt with Groq (Fast)
+  // 1. Optimize Prompt with Groq
   if (optimize) {
     try {
-      finalPrompt = await callAI('GROQ', 'llama3-8b-8192', [{
+      finalPrompt = await callAI('GROQ', 'llama3-70b-8192', [{
         role: "user", 
         content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
       }], false);
@@ -189,14 +196,12 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
     }
   }
 
-  // 2. Generate Image using Pollinations.ai (FREE, UNLIMITED, NO API KEY REQUIRED)
-  // This satisfies the "Unlimited" requirement perfectly.
-  // We use the Flux model via Pollinations
+  // 2. Generate Image using Pollinations.ai (FREE, UNLIMITED)
   const encodedPrompt = encodeURIComponent(finalPrompt);
   const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
 
-  // We fetch it to ensure it's generated (hot-loading) before returning
-  await fetch(imageUrl);
+  // Pre-fetch check
+  try { await fetch(imageUrl); } catch(e) {}
 
   return {
     imageUrl: imageUrl,
@@ -208,20 +213,24 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // We use OpenRouter for Vision as Groq's Vision support is limited/beta.
-  // We target a robust model like 'google/gemini-flash-1.5' or 'x-ai/grok-vision-beta' via OpenRouter
-  
+  // Use OpenRouter for Vision (Grok 2 or Gemini Flash)
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
+
+  // Using x-ai/grok-2-vision-1212 as requested/implied (Grok Vision)
+  // If this specific model ID is unavailable, OpenRouter often routes to a fallback or returns 404.
+  // Alternative robust choice: "google/gemini-2.0-flash-exp:free" or "google/gemini-flash-1.5"
+  const modelId = "x-ai/grok-2-vision-1212"; 
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://tubemaster.ai"
     },
     body: JSON.stringify({
-      model: "google/gemini-flash-1.5", // Or 'x-ai/grok-beta' if available and preferred
+      model: modelId,
       messages: [
         {
           role: "user",
@@ -231,17 +240,20 @@ export const compareThumbnailsVision = async (imgA: string, imgB: string, provid
             { type: "image_url", image_url: { url: imgB } }
           ]
         }
-      ]
+      ],
+      response_format: { type: "json_object" }
     })
   });
 
-  if (!response.ok) throw new Error("Vision API Failed");
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Vision API Error: ${err}`);
+  }
   
   const json = await response.json();
   const content = json.choices?.[0]?.message?.content || "{}";
   const result = JSON.parse(cleanJson(content));
 
-  // Safety check for UI
   if (!result.breakdown) result.breakdown = [];
   return result;
 };
