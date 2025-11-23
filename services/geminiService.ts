@@ -147,12 +147,17 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
 };
 
 export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Promise<CompetitorAnalysisResult> => {
+  // Validate input data before calling AI
+  if (!scrapedData || !scrapedData.channel || scrapedData.channel.title === 'Unknown Channel') {
+    throw new Error("Invalid channel data provided to AI analysis.");
+  }
+
   const systemPrompt = "You are a YouTube Strategist. Output strictly JSON.";
   
   // Create a condensed summary of videos for the prompt to save tokens
-  const videoSummary = scrapedData.recentVideos.map(v => 
-    `- "${v.title}" (${v.viewCount} views, ${v.publishedTimeText})`
-  ).join('\n');
+  const videoSummary = scrapedData.recentVideos.length > 0 
+    ? scrapedData.recentVideos.map(v => `- "${v.title}" (${v.viewCount} views, ${v.publishedTimeText})`).join('\n')
+    : "No recent videos found.";
 
   const userPrompt = `
     Analyze this competitor channel data:

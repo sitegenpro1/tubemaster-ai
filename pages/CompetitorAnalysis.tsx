@@ -36,8 +36,9 @@ export const CompetitorAnalysis: React.FC = () => {
         getChannelVideos(channelId)
       ]);
 
-      if (stats.title === 'Unknown Channel' && videos.length === 0) {
-        throw new Error("API returned empty data. The channel might be private or the API limit reached.");
+      // Strict validation: If we don't have a valid channel title, something went wrong with the API
+      if (!stats || stats.title === 'Unknown Channel' || stats.title === '') {
+        throw new Error("API returned invalid channel data. The channel might be restricted.");
       }
 
       const fullData = { channel: stats, recentVideos: videos };
@@ -209,13 +210,21 @@ export const CompetitorAnalysis: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {scrapedData.recentVideos.map((v, i) => (
-                    <tr key={i} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-4 text-slate-200 font-medium max-w-md truncate" title={v.title}>{v.title}</td>
-                      <td className="p-4 font-mono text-brand-400">{v.viewCount}</td>
-                      <td className="p-4">{v.publishedTimeText}</td>
+                  {scrapedData.recentVideos.length > 0 ? (
+                    scrapedData.recentVideos.map((v, i) => (
+                      <tr key={i} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="p-4 text-slate-200 font-medium max-w-md truncate" title={v.title}>{v.title}</td>
+                        <td className="p-4 font-mono text-brand-400">{v.viewCount}</td>
+                        <td className="p-4">{v.publishedTimeText}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-slate-500 italic">
+                        No videos found or channel is empty.
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
