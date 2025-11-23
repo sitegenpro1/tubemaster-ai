@@ -1,5 +1,5 @@
 
-import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult } from "../types";
+import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult, RapidFullAnalysisData } from "../types";
 
 // --- CONFIGURATION ---
 
@@ -146,32 +146,31 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
   }
 };
 
-export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
-  let contextData = "";
-  
-  // 1. Web Scraping Layer (Client-side proxy)
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
-    const response = await fetch(proxyUrl);
-    if (response.ok) {
-      const data = await response.json();
-      const html = data.contents;
-      const titleMatch = html.match(/<title>(.*?)<\/title>/);
-      const descMatch = html.match(/name="description" content="(.*?)"/);
-      contextData = `Channel Title: ${titleMatch?.[1] || 'Unknown'}\nDescription: ${descMatch?.[1] || 'Unknown'}`;
-    }
-  } catch (e) {
-    console.warn("Scraping failed, proceeding with URL only", e);
-    contextData = `Channel URL: ${channelUrl}`;
-  }
-
-  // 2. AI Reasoning
+export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Promise<CompetitorAnalysisResult> => {
   const systemPrompt = "You are a YouTube Strategist. Output strictly JSON.";
+  
+  // Create a condensed summary of videos for the prompt to save tokens
+  const videoSummary = scrapedData.recentVideos.map(v => 
+    `- "${v.title}" (${v.viewCount} views, ${v.publishedTimeText})`
+  ).join('\n');
+
   const userPrompt = `
-    Analyze this competitor data: ${contextData.substring(0, 1000)}
+    Analyze this competitor channel data:
+    Channel: ${scrapedData.channel.title}
+    Subs: ${scrapedData.channel.subscriberCount}
+    Description: ${scrapedData.channel.description.substring(0, 300)}...
+    
+    Recent Videos:
+    ${videoSummary}
+
+    Task:
+    1. Identify content gaps (what topics are missing or underperforming?).
+    2. Analyze what is working (high views relative to subs).
+    3. Create a "Steal Their Traffic" action plan.
+
     Provide a strategic analysis in this JSON format:
     {
-      "channelName": "string",
+      "channelName": "string (Use actual name)",
       "subscriberEstimate": "string",
       "strengths": ["string"],
       "weaknesses": ["string"],

@@ -78,3 +78,30 @@ export interface ThumbnailGenResult {
   style: string;
   createdAt: number;
 }
+
+// --- RAPID API TYPES ---
+
+export interface RapidChannelData {
+  id: string;
+  title: string;
+  description: string;
+  subscriberCount: string;
+  viewCount: string;
+  videoCount: string;
+  avatar: string;
+  isVerified: boolean;
+}
+
+export interface RapidVideoData {
+  videoId: string;
+  title: string;
+  viewCount: string;
+  publishedTimeText: string;
+  lengthText: string;
+  thumbnail: string;
+}
+
+export interface RapidFullAnalysisData {
+  channel: RapidChannelData;
+  recentVideos: RapidVideoData[];
+}

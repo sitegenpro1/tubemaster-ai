@@ -28,9 +28,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
     { name: 'Home', id: 'home' },
     { name: 'Keywords', id: 'keywords' },
     { name: 'Thumbnails', id: 'thumbnail-gen' },
-    { name: 'Script Writer', id: 'script' },
+    { name: 'Scripts', id: 'script' },
     { name: 'Compare', id: 'compare' },
-    { name: 'Competitors', id: 'competitors' },
+    { name: 'Spy Tool', id: 'competitors' },
     { name: 'About', id: 'about' },
     { name: 'Contact', id: 'contact' },
   ];

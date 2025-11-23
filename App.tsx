@@ -13,61 +13,61 @@ import { Contact } from './pages/Contact';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 
 function App() {
-  // Initialize state from URL hash to handle refreshes
+  // Initialize state: Priority 1: Hash, Priority 2: LocalStorage, Default: 'home'
+  // This ensures that even if the previewer resets the URL, we remember the last page.
   const getInitialView = () => {
     if (typeof window !== 'undefined') {
-      return window.location.hash.replace('#', '') || 'home';
+      const hash = window.location.hash.replace('#', '');
+      if (hash) return hash;
+      
+      const stored = localStorage.getItem('lastView');
+      if (stored) return stored;
     }
     return 'home';
   };
 
   const [currentView, setCurrentView] = useState(getInitialView);
 
-  // Handle browser back/forward buttons and initial load
+  // 1. Persistence & Scroll Fix
+  useEffect(() => {
+    // Save current view so it persists on refresh
+    localStorage.setItem('lastView', currentView);
+    
+    // FORCE Scroll to top instantly when view changes
+    // This fixes the issue of being stuck at the footer when navigating from Home
+    window.scrollTo({ top: 0, behavior: 'instant' }); 
+  }, [currentView]);
+
+  // 2. Listen for Back/Forward Button changes
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '') || 'home';
-      setCurrentView(hash);
-      window.scrollTo(0, 0); // Scroll to top on hash change (back button)
+      const hash = window.location.hash.replace('#', '');
+      if (hash && hash !== currentView) {
+        setCurrentView(hash);
+      }
     };
-
-    // Initial scroll check
-    window.scrollTo(0, 0);
-
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [currentView]);
 
-  // Wrapper for navigation to ensure URL updates and scrolling
   const handleNavigate = (view: string) => {
-    window.location.hash = view; // This triggers the hashchange event above
-    // We don't need to setCurrentView here because the event listener handles it
+    setCurrentView(view);
+    window.location.hash = view;
   };
 
   const renderView = () => {
     switch (currentView) {
-      case 'home':
-        return <Home onNavigate={handleNavigate} />;
-      case 'keywords':
-        return <KeywordFinder />;
-      case 'script':
-        return <ScriptGenerator />;
-      case 'thumbnail-gen':
-        return <ThumbnailGenerator />;
-      case 'compare':
-        return <ThumbnailCompare />;
-      case 'competitors':
-        return <CompetitorAnalysis />;
-      case 'title-time':
-        return <TitleTime />;
-      case 'about':
-        return <About />;
-      case 'contact':
-        return <Contact />;
-      case 'privacy':
-        return <PrivacyPolicy />;
-      default:
-        return <Home onNavigate={handleNavigate} />;
+      case 'home': return <Home onNavigate={handleNavigate} />;
+      case 'keywords': return <KeywordFinder />;
+      case 'script': return <ScriptGenerator />;
+      case 'thumbnail-gen': return <ThumbnailGenerator />;
+      case 'compare': return <ThumbnailCompare />;
+      case 'competitors': return <CompetitorAnalysis />;
+      case 'title-time': return <TitleTime />;
+      case 'about': return <About />;
+      case 'contact': return <Contact />;
+      case 'privacy': return <PrivacyPolicy />;
+      default: return <Home onNavigate={handleNavigate} />;
     }
   };
 
