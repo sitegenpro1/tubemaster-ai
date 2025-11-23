@@ -2,14 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content="TubeMaster AI - The commercial-grade growth suite for YouTube creators. Analyze competitors, find keywords, write scripts, and generate 4K thumbnails." />
     <meta name="theme-color" content="#0f172a" />
     <title>TubeMaster AI | YouTube Growth Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -17,6 +17,7 @@
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
               brand: {
@@ -30,12 +31,24 @@
                 700: '#0f766e',
                 800: '#115e59',
                 900: '#134e4a',
+                950: '#042f2e',
+              },
+              dark: {
+                800: '#1e293b',
+                900: '#0f172a',
+                950: '#020617',
               }
+            },
+            backgroundImage: {
+              'glass-gradient': 'linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+              'glass-shine': 'linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.03) 50%, transparent 75%)',
             },
             animation: {
               'fade-in': 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
               'slide-up': 'slideUp 0.5s ease-out forwards',
+              'slide-down': 'slideDown 0.3s ease-out forwards',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
               fadeIn: {
@@ -45,6 +58,14 @@
               slideUp: {
                  '0%': { transform: 'translateY(20px)', opacity: '0' },
                  '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              slideDown: {
+                 '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                 '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
               }
             }
           }
@@ -53,10 +74,16 @@
     </script>
     <style>
       body {
-        background-color: #0f172a;
+        background-color: #020617;
         color: #e2e8f0;
-        background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+        /* Improved background with better mobile support */
+        background-image: 
+          radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 25%), 
+          radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
+        background-attachment: fixed;
         min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       /* Custom scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
@@ -64,7 +91,7 @@
         height: 6px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
+        background: rgba(15, 23, 42, 0.5);
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
         background: #334155;
@@ -72,6 +99,12 @@
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #475569;
+      }
+      /* Mobile inputs override to prevent zoom */
+      @media screen and (max-width: 768px) {
+        input, select, textarea {
+          font-size: 16px !important;
+        }
       }
       html {
         scroll-behavior: smooth;
