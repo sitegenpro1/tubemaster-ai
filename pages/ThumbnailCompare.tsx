@@ -10,7 +10,6 @@ export const ThumbnailCompare: React.FC = () => {
   const [imgB, setImgB] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ThumbnailCompareResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>, setImg: (s: string) => void) => {
     const file = e.target.files?.[0];
@@ -25,19 +24,12 @@ export const ThumbnailCompare: React.FC = () => {
     if (!imgA || !imgB) return;
     setLoading(true);
     setResult(null);
-    setError(null);
-
     try {
-      const data = await compareThumbnailsVision(imgA, imgB);
-      // Validate that we actually got a meaningful object back
-      if (data && typeof data === 'object') {
-        setResult(data);
-      } else {
-        throw new Error("Received empty analysis from AI.");
-      }
-    } catch (e: any) {
-      console.error("Comparison Error:", e);
-      setError(e.message || "Comparison failed. Please check your API Key and try again.");
+      const data = await compareThumbnailsVision(imgA, imgB, 'OPENROUTER');
+      setResult(data);
+    } catch (e) {
+      console.error(e);
+      alert("Comparison failed. Check your OpenRouter API Key or try again later.");
     } finally {
       setLoading(false);
     }
@@ -49,7 +41,7 @@ export const ThumbnailCompare: React.FC = () => {
       
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Thumbnail A/B Simulator</h2>
-        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span> via OpenRouter.</p>
+        <p className="text-slate-400 mt-2">Predict the winner using AI Vision intelligence.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -62,7 +54,7 @@ export const ThumbnailCompare: React.FC = () => {
               onClick={() => document.getElementById(`file${item.id}`)?.click()}
               className="aspect-video bg-slate-950 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center cursor-pointer hover:border-slate-600 overflow-hidden relative"
             >
-              {item.img ? <img src={item.img} className="w-full h-full object-cover" alt={`Thumbnail ${item.id}`} /> : <span className="text-4xl">🖼️</span>}
+              {item.img ? <img src={item.img} className="w-full h-full object-cover" /> : <span className="text-4xl">🖼️</span>}
               <input id={`file${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e, item.set)} />
               {item.score !== undefined && (
                 <div className="absolute top-2 right-2 bg-black/80 px-3 py-1 rounded text-xl font-bold text-white">
@@ -74,27 +66,20 @@ export const ThumbnailCompare: React.FC = () => {
         ))}
       </div>
 
-      <div className="text-center space-y-4">
+      <div className="text-center">
         <Button onClick={handleCompare} disabled={loading || !imgA || !imgB} className="px-10 py-4 text-lg rounded-full">
           {loading ? <Spinner /> : 'Predict Winner'}
         </Button>
-        {error && (
-          <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-lg max-w-xl mx-auto animate-fade-in">
-            <p className="text-rose-400 font-medium">Error: {error}</p>
-            <p className="text-xs text-rose-500/70 mt-1">If using OpenRouter, ensure your model (x-ai/grok-2-vision-1212) is available on your plan.</p>
-          </div>
-        )}
       </div>
 
       {result && (
         <div className="animate-slide-up space-y-6">
           <Card className="bg-gradient-to-br from-slate-900 to-slate-950">
              <h3 className="text-xl font-bold text-white mb-2">AI Analysis</h3>
-             <p className="text-slate-300 leading-relaxed">{result.reasoning || "No detailed reasoning provided."}</p>
+             <p className="text-slate-300 leading-relaxed">{result.reasoning}</p>
           </Card>
           
-          {/* SAFE RENDERING: Use optional chaining (?.) to prevent crash if breakdown is missing */}
-          {result?.breakdown && Array.isArray(result.breakdown) && result.breakdown.length > 0 ? (
+          {result.breakdown && result.breakdown.length > 0 && (
             <div className="grid md:grid-cols-2 gap-4">
               {result.breakdown.map((b, i) => (
                 <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">
@@ -103,10 +88,6 @@ export const ThumbnailCompare: React.FC = () => {
                 </div>
               ))}
             </div>
-          ) : (
-             <div className="text-center p-4 border border-slate-800 rounded-lg bg-slate-900/50">
-               <p className="text-slate-500 text-sm">Detailed breakdown metrics unavailable for this comparison.</p>
-             </div>
           )}
         </div>
       )}
