@@ -22,6 +22,15 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       locked: false // Unlocked for Beta
     },
     {
+      title: 'AI Explainer Board',
+      desc: 'Create professional flowchart-style explainer graphics instantly. Perfect for educational videos and documentaries.',
+      icon: '📊',
+      id: 'explainer-board',
+      color: 'from-teal-400 to-teal-600',
+      stat: 'Edu-Graphics',
+      locked: false
+    },
+    {
       title: 'YT Keyword Finder',
       desc: 'Our advanced 10-Point Logic system analyzes intent, trend trajectory, and difficulty to find low-competition keywords that actually rank.',
       icon: '🔑',
@@ -37,7 +46,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       id: 'thumbnail-gen',
       color: 'from-pink-500 to-rose-500',
       stat: 'CTR Booster',
-      locked: !isPro // Hard Locked as requested
+      locked: true // Hard Locked as requested
     },
     {
       title: 'Thumbnail Downloader',

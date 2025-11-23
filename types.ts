@@ -9,7 +9,8 @@ export enum ToolType {
   COMPETITOR_ANALYSIS = 'competitor-analysis',
   TAGS_GENERATOR = 'tags-generator',
   DESCRIPTION_GENERATOR = 'description-generator',
-  THUMBNAIL_DOWNLOADER = 'thumbnail-downloader'
+  THUMBNAIL_DOWNLOADER = 'thumbnail-downloader',
+  EXPLAINER_BOARD = 'explainer-board'
 }
 
 export interface KeywordResult {
@@ -87,6 +88,12 @@ export interface DescriptionResult {
   body: string;
   keywordsUsed: string[];
   hashtags: string[];
+}
+
+export interface FlowchartStep {
+  title: string;
+  description: string;
+  iconHint: string; // e.g., "💰", "⚙️"
 }
 
 // --- RAPID API TYPES ---

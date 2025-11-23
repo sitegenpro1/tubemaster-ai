@@ -11,6 +11,7 @@ import { TitleTime } from './pages/TitleTime';
 import { TagsGenerator } from './pages/TagsGenerator';
 import { DescriptionGenerator } from './pages/DescriptionGenerator';
 import { ThumbnailDownloader } from './pages/ThumbnailDownloader';
+import { ExplainerBoard } from './pages/ExplainerBoard';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
@@ -73,6 +74,7 @@ function App() {
       case 'title-time': return <TitleTime />;
       case 'tags-gen': return <TagsGenerator />;
       case 'desc-gen': return <DescriptionGenerator />;
+      case 'explainer-board': return <ExplainerBoard />;
       case 'pricing': return <Pricing onNavigate={handleNavigate} />;
       case 'login': return <Login onNavigate={handleNavigate} />;
       case 'about': return <About />;

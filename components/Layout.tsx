@@ -34,7 +34,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
     { name: 'Grabber', id: 'thumbnail-dl' },
     { name: 'Scripts', id: 'script' },
     { name: 'Spy Tool', id: 'competitors' },
-    { name: 'Tags', id: 'tags-gen' },
+    { name: 'Explainer', id: 'explainer-board' },
   ];
 
   return (
@@ -206,7 +206,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <h4 className="text-white font-bold mb-4">Tools</h4>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('keywords')}>Keyword Explorer</li>
-                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('thumbnail-gen')}>Thumbnail AI</li>
+                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('explainer-board')}>AI Explainer Board</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('thumbnail-dl')}>Thumbnail Downloader</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('script')}>Script Writer</li>
               </ul>
