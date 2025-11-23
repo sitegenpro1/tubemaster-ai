@@ -4,8 +4,9 @@ import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenRe
 // --- CONFIGURATION ---
 
 // Centralized Model Definitions
-// Updated based on user's available models
-const GROQ_MODEL = 'openai/gpt-oss-120b'; 
+// Text Tools -> GROQ Provider (as requested)
+const TEXT_MODEL = 'openai/gpt-oss-120b'; 
+// Vision Tools -> OPENROUTER Provider (as requested)
 const VISION_MODEL = "x-ai/grok-4.1-fast";
 
 const getEnvVar = (key: string): string => {
@@ -29,7 +30,6 @@ const getEnvVar = (key: string): string => {
 };
 
 const getGroqKey = () => getEnvVar('VITE_GROQ_API_KEY');
-
 const getOpenRouterKey = () => getEnvVar('VITE_OPENROUTER_API_KEY');
 
 // --- CORE HELPERS ---
@@ -58,20 +58,19 @@ const callAI = async (
   jsonMode: boolean = true
 ): Promise<string> => {
   
-  // INTELLIGENT ROUTING LOGIC:
-  // If the model ID contains a slash (e.g. "openai/gpt-oss-120b"), it is an OpenRouter model.
-  // We must uses the OpenRouter API Key and Endpoint, regardless of the requested 'provider' argument.
-  const isOpenRouterModel = model.includes('/');
-  const useOpenRouter = isOpenRouterModel || provider === 'OPENROUTER';
+  // STRICT PROVIDER LOGIC:
+  // GROQ -> Always use Groq Endpoint + Groq Key
+  // OPENROUTER -> Always use OpenRouter Endpoint + OpenRouter Key
   
-  const apiKey = useOpenRouter ? getOpenRouterKey() : getGroqKey();
-  const endpoint = useOpenRouter
-    ? "https://openrouter.ai/api/v1/chat/completions"
-    : "https://api.groq.com/openai/v1/chat/completions";
+  const isGroq = provider === 'GROQ';
+  const apiKey = isGroq ? getGroqKey() : getOpenRouterKey();
+  const endpoint = isGroq
+    ? "https://api.groq.com/openai/v1/chat/completions"
+    : "https://openrouter.ai/api/v1/chat/completions";
 
   if (!apiKey) { 
-    const missingKeyName = useOpenRouter ? 'VITE_OPENROUTER_API_KEY' : 'VITE_GROQ_API_KEY';
-    console.warn(`Missing API Key for ${useOpenRouter ? 'OpenRouter' : 'Groq'} (Model: ${model})`);
+    const missingKeyName = isGroq ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY';
+    console.warn(`Missing API Key for ${provider} (Model: ${model})`);
     throw new Error(`Missing API Key. Please add ${missingKeyName} to your environment variables.`);
   }
 
@@ -81,7 +80,7 @@ const callAI = async (
   };
 
   // Add OpenRouter specific headers if we are hitting that endpoint
-  if (useOpenRouter) {
+  if (!isGroq) {
     headers["HTTP-Referer"] = "https://tubemaster.ai";
     headers["X-Title"] = "TubeMaster AI";
   }
@@ -94,9 +93,6 @@ const callAI = async (
         model: model,
         messages: messages,
         temperature: 0.7,
-        // Only send response_format if jsonMode is requested. 
-        // Note: Some OpenRouter models might not support 'json_object' strictly, 
-        // but most modern ones (GPT-4, Claude, Llama 3) do.
         response_format: jsonMode ? { type: "json_object" } : undefined
       })
     });
@@ -110,12 +106,11 @@ const callAI = async (
         if (errObj.error && errObj.error.message) friendlyError = errObj.error.message;
       } catch (e) {}
       
-      // Special handling for 401 to be very clear
       if (response.status === 401) {
-        throw new Error(`Authentication Failed (401). Please check your ${useOpenRouter ? 'VITE_OPENROUTER_API_KEY' : 'VITE_GROQ_API_KEY'}.`);
+        throw new Error(`Authentication Failed (401) for ${provider}. Check ${isGroq ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY'}.`);
       }
 
-      throw new Error(`AI Error (${response.status}): ${friendlyError}`);
+      throw new Error(`${provider} Error (${response.status}): ${friendlyError}`);
     }
 
     const data = await response.json();
@@ -138,7 +133,7 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
   `;
 
   try {
-    const jsonStr = await callAI('GROQ', GROQ_MODEL, [
+    const jsonStr = await callAI('GROQ', TEXT_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ], true);
@@ -147,7 +142,7 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
     console.error("Keyword find error", e);
-    throw e; // Rethrow to show UI error
+    throw e;
   }
 };
 
@@ -186,7 +181,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     }
   `;
 
-  const jsonStr = await callAI('GROQ', GROQ_MODEL, [
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -202,7 +197,7 @@ export const generateScript = async (title: string, audience: string): Promise<S
     JSON Schema: { "title": "string", "estimatedDuration": "string", "targetAudience": "string", "sections": [ { "title": "string", "content": "string (script dialogue)", "duration": "string", "visualCue": "string (editor notes)", "logicStep": "Hook" | "Body" | "Conclusion" } ] }
   `;
 
-  const jsonStr = await callAI('GROQ', GROQ_MODEL, [
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -212,7 +207,7 @@ export const generateScript = async (title: string, audience: string): Promise<S
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
   const userPrompt = `Generate 10 viral, click-bait style YouTube titles for: "${topic}". Return JSON: { "titles": ["string"] }`;
-  const jsonStr = await callAI('GROQ', GROQ_MODEL, [{ role: "user", content: userPrompt }], true);
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [{ role: "user", content: userPrompt }], true);
   const parsed = JSON.parse(cleanJson(jsonStr));
   return parsed.titles || [];
 };
@@ -220,16 +215,16 @@ export const generateTitles = async (topic: string): Promise<string[]> => {
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
   const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
   // Using generic mode (no JSON enforcement) for simple text
-  return await callAI('GROQ', GROQ_MODEL, [{ role: "user", content: userPrompt }], false);
+  return await callAI('GROQ', TEXT_MODEL, [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
 
-  // 1. Optimize Prompt with Groq (or OpenRouter if configured)
+  // 1. Optimize Prompt with Groq (Text Tool)
   if (optimize) {
     try {
-      finalPrompt = await callAI('GROQ', GROQ_MODEL, [{
+      finalPrompt = await callAI('GROQ', TEXT_MODEL, [{
         role: "user", 
         content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
       }], false);
@@ -255,9 +250,8 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // Always use OpenRouter for Vision if VISION_MODEL is an x-ai/OpenRouter model
-  // Pass 'OPENROUTER' explicitly to ensure correct routing logic in callAI if we were using it,
-  // but here we construct the call manually because of the image_url structure which callAI doesn't natively support yet.
+  // STRICTLY USE OPENROUTER FOR VISION as requested
+  // We ignore the incoming provider arg to ensure safety, or default it.
   
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
@@ -293,6 +287,8 @@ export const compareThumbnailsVision = async (imgA: string, imgB: string, provid
        const e = JSON.parse(err);
        if(e.error && e.error.message) errorMsg = e.error.message;
     } catch(e){}
+    
+    if (response.status === 401) throw new Error("OpenRouter Auth Failed. Check VITE_OPENROUTER_API_KEY.");
     throw new Error(`Vision API Error: ${errorMsg}`);
   }
   
