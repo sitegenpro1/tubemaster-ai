@@ -57,21 +57,22 @@ const callAI = async (
   messages: any[],
   jsonMode: boolean = true
 ): Promise<string> => {
-  const apiKey = provider === 'GROQ' ? getGroqKey() : getOpenRouterKey();
   
-  // Intelligent Endpoint Switching
-  // If a model ID contains a slash (e.g., "openai/gpt-oss-120b"), it is an OpenRouter ID, not a native Groq ID.
-  // We automatically switch the endpoint to OpenRouter to ensure the call succeeds, 
-  // while still using the API Key associated with the requested provider.
-  const isLikelyOpenRouter = model.includes('/') || provider === 'OPENROUTER';
+  // INTELLIGENT ROUTING LOGIC:
+  // If the model ID contains a slash (e.g. "openai/gpt-oss-120b"), it is an OpenRouter model.
+  // We must uses the OpenRouter API Key and Endpoint, regardless of the requested 'provider' argument.
+  const isOpenRouterModel = model.includes('/');
+  const useOpenRouter = isOpenRouterModel || provider === 'OPENROUTER';
   
-  const endpoint = isLikelyOpenRouter
+  const apiKey = useOpenRouter ? getOpenRouterKey() : getGroqKey();
+  const endpoint = useOpenRouter
     ? "https://openrouter.ai/api/v1/chat/completions"
     : "https://api.groq.com/openai/v1/chat/completions";
 
   if (!apiKey) { 
-    console.warn(`Missing API Key for ${provider}`);
-    throw new Error(`Please add VITE_${provider}_API_KEY to your .env file.`);
+    const missingKeyName = useOpenRouter ? 'VITE_OPENROUTER_API_KEY' : 'VITE_GROQ_API_KEY';
+    console.warn(`Missing API Key for ${useOpenRouter ? 'OpenRouter' : 'Groq'} (Model: ${model})`);
+    throw new Error(`Missing API Key. Please add ${missingKeyName} to your environment variables.`);
   }
 
   const headers: Record<string, string> = {
@@ -80,7 +81,7 @@ const callAI = async (
   };
 
   // Add OpenRouter specific headers if we are hitting that endpoint
-  if (isLikelyOpenRouter) {
+  if (useOpenRouter) {
     headers["HTTP-Referer"] = "https://tubemaster.ai";
     headers["X-Title"] = "TubeMaster AI";
   }
@@ -93,6 +94,9 @@ const callAI = async (
         model: model,
         messages: messages,
         temperature: 0.7,
+        // Only send response_format if jsonMode is requested. 
+        // Note: Some OpenRouter models might not support 'json_object' strictly, 
+        // but most modern ones (GPT-4, Claude, Llama 3) do.
         response_format: jsonMode ? { type: "json_object" } : undefined
       })
     });
@@ -106,6 +110,11 @@ const callAI = async (
         if (errObj.error && errObj.error.message) friendlyError = errObj.error.message;
       } catch (e) {}
       
+      // Special handling for 401 to be very clear
+      if (response.status === 401) {
+        throw new Error(`Authentication Failed (401). Please check your ${useOpenRouter ? 'VITE_OPENROUTER_API_KEY' : 'VITE_GROQ_API_KEY'}.`);
+      }
+
       throw new Error(`AI Error (${response.status}): ${friendlyError}`);
     }
 
@@ -217,7 +226,7 @@ export const suggestBestTime = async (title: string, audience: string, tags: str
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
 
-  // 1. Optimize Prompt with Groq
+  // 1. Optimize Prompt with Groq (or OpenRouter if configured)
   if (optimize) {
     try {
       finalPrompt = await callAI('GROQ', GROQ_MODEL, [{
@@ -246,7 +255,10 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // Use OpenRouter for Vision (using Grok Fast)
+  // Always use OpenRouter for Vision if VISION_MODEL is an x-ai/OpenRouter model
+  // Pass 'OPENROUTER' explicitly to ensure correct routing logic in callAI if we were using it,
+  // but here we construct the call manually because of the image_url structure which callAI doesn't natively support yet.
+  
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
 
