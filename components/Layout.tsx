@@ -30,7 +30,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   const navItems = [
     { name: 'Home', id: 'home' },
     { name: 'Keywords', id: 'keywords' },
-    { name: 'Thumbnails', id: 'thumbnail-gen' },
     { name: 'Grabber', id: 'thumbnail-dl' },
     { name: 'Scripts', id: 'script' },
     { name: 'Spy Tool', id: 'competitors' },

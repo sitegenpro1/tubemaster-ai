@@ -4,7 +4,6 @@ import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { KeywordFinder } from './pages/KeywordFinder';
 import { ScriptGenerator } from './pages/ScriptGenerator';
-import { ThumbnailGenerator } from './pages/ThumbnailGenerator';
 import { ThumbnailCompare } from './pages/ThumbnailCompare';
 import { CompetitorAnalysis } from './pages/CompetitorAnalysis';
 import { TitleTime } from './pages/TitleTime';
@@ -67,7 +66,6 @@ function App() {
       case 'home': return <Home onNavigate={handleNavigate} />;
       case 'keywords': return <KeywordFinder />;
       case 'script': return <ScriptGenerator />;
-      case 'thumbnail-gen': return <ThumbnailGenerator />;
       case 'thumbnail-dl': return <ThumbnailDownloader />;
       case 'compare': return <ThumbnailCompare />;
       case 'competitors': return <CompetitorAnalysis />;

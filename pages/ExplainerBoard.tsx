@@ -71,7 +71,6 @@ export const ExplainerBoard: React.FC = () => {
     // 3. Layout Logic
     const nodeWidth = format === 'landscape' ? 320 : 500;
     const nodeHeight = format === 'landscape' ? 180 : 250;
-    const padding = 40;
     
     // Calculate positions
     const positions: {x: number, y: number}[] = [];
@@ -162,14 +161,17 @@ export const ExplainerBoard: React.FC = () => {
       ctx.font = '40px "Segoe UI Emoji"';
       ctx.fillText(step.iconHint, pos.x + nodeWidth/2, pos.y + 50);
 
-      // Title
-      ctx.font = 'bold 24px Inter, sans-serif';
-      wrapText(ctx, step.title, pos.x + nodeWidth/2, pos.y + 90, nodeWidth - 40, 30);
+      // Title - Slightly smaller, bolder font for tight fit
+      ctx.font = 'bold 22px Inter, sans-serif'; 
+      const titleY = pos.y + 90;
+      wrapText(ctx, step.title, pos.x + nodeWidth/2, titleY, nodeWidth - 40, 26);
 
-      // Desc
-      ctx.font = '18px Inter, sans-serif';
+      // Desc - Smaller font, tighter line height
+      ctx.font = '16px Inter, sans-serif';
       ctx.fillStyle = '#475569';
-      wrapText(ctx, step.description, pos.x + nodeWidth/2, pos.y + 130, nodeWidth - 30, 24);
+      // Adjust start Y based on title lines approx
+      const descY = pos.y + 130;
+      wrapText(ctx, step.description, pos.x + nodeWidth/2, descY, nodeWidth - 30, 20);
 
       // Number Badge
       ctx.fillStyle = '#334155';
@@ -178,6 +180,7 @@ export const ExplainerBoard: React.FC = () => {
       ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 14px Inter';
+      ctx.textAlign = 'center'; // Reset alignment for number
       ctx.fillText((i + 1).toString(), pos.x, pos.y + 5);
     });
 
@@ -208,20 +211,27 @@ export const ExplainerBoard: React.FC = () => {
     const words = text.split(' ');
     let line = '';
     let currentY = y;
+    let linesDrawn = 0;
+    const maxLines = 3; // Enforce tight vertical limit
 
     for(let n = 0; n < words.length; n++) {
+      if (linesDrawn >= maxLines) break; // Stop drawing if excessive
+
       const testLine = line + words[n] + ' ';
       const metrics = ctx.measureText(testLine);
       const testWidth = metrics.width;
       if (testWidth > maxWidth && n > 0) {
-        ctx.fillText(line, x, currentY);
+        ctx.fillText(line.trim(), x, currentY);
         line = words[n] + ' ';
         currentY += lineHeight;
+        linesDrawn++;
       } else {
         line = testLine;
       }
     }
-    ctx.fillText(line, x, currentY);
+    if (linesDrawn < maxLines) {
+        ctx.fillText(line.trim(), x, currentY);
+    }
   };
 
   useEffect(() => {

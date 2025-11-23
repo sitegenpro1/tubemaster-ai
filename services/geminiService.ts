@@ -404,11 +404,11 @@ export const generateFlowchartSteps = async (topic: string): Promise<FlowchartSt
   const systemPrompt = "You are an expert educator designed to create simplified, visual explainer flowcharts.";
   const userPrompt = `
     Create a 5 to 7 step logical flowchart to explain: "${topic}".
-    The output must be simple, suitable for a visual board.
+    The output must be EXTREMELY CONCISE and SIMPLE, suitable for small visual nodes on a board.
     
     Structure:
-    1. Title: Very short (2-4 words max).
-    2. Description: Concise explanation (10-15 words max).
+    1. Title: 2-3 words MAX. (e.g. "Mining Block", "User Request").
+    2. Description: 8 words MAX. Keep it tight. (e.g. "Computers solve complex math puzzles.").
     3. IconHint: A single emoji representing the step.
     
     Constraint: No images, just text and emojis. Ensure content is 100% ethical, safe, and clean. No hateful or controversial content.
