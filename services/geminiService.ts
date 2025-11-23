@@ -3,15 +3,34 @@ import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenRe
 
 // --- CONFIGURATION ---
 
-const getGroqKey = () => {
-  // @ts-ignore
-  return import.meta.env.VITE_GROQ_API_KEY || "";
+// Centralized Model Definitions
+// Updated based on user's available models
+const GROQ_MODEL = 'openai/gpt-oss-120b'; 
+const VISION_MODEL = "x-ai/grok-4.1-fast";
+
+const getEnvVar = (key: string): string => {
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      // @ts-ignore
+      return import.meta.env[key];
+    }
+  } catch (e) {}
+
+  try {
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      // @ts-ignore
+      return process.env[key];
+    }
+  } catch (e) {}
+
+  return "";
 };
 
-const getOpenRouterKey = () => {
-  // @ts-ignore
-  return import.meta.env.VITE_OPENROUTER_API_KEY || "";
-};
+const getGroqKey = () => getEnvVar('VITE_GROQ_API_KEY');
+
+const getOpenRouterKey = () => getEnvVar('VITE_OPENROUTER_API_KEY');
 
 // --- CORE HELPERS ---
 
@@ -39,27 +58,37 @@ const callAI = async (
   jsonMode: boolean = true
 ): Promise<string> => {
   const apiKey = provider === 'GROQ' ? getGroqKey() : getOpenRouterKey();
-  const endpoint = provider === 'GROQ' 
-    ? "https://api.groq.com/openai/v1/chat/completions" 
-    : "https://openrouter.ai/api/v1/chat/completions";
+  
+  // Intelligent Endpoint Switching
+  // If a model ID contains a slash (e.g., "openai/gpt-oss-120b"), it is an OpenRouter ID, not a native Groq ID.
+  // We automatically switch the endpoint to OpenRouter to ensure the call succeeds, 
+  // while still using the API Key associated with the requested provider.
+  const isLikelyOpenRouter = model.includes('/') || provider === 'OPENROUTER';
+  
+  const endpoint = isLikelyOpenRouter
+    ? "https://openrouter.ai/api/v1/chat/completions"
+    : "https://api.groq.com/openai/v1/chat/completions";
 
   if (!apiKey) { 
     console.warn(`Missing API Key for ${provider}`);
     throw new Error(`Please add VITE_${provider}_API_KEY to your .env file.`);
   }
 
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+
+  // Add OpenRouter specific headers if we are hitting that endpoint
+  if (isLikelyOpenRouter) {
+    headers["HTTP-Referer"] = "https://tubemaster.ai";
+    headers["X-Title"] = "TubeMaster AI";
+  }
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        // OpenRouter specific headers
-        ...(provider === 'OPENROUTER' ? {
-          "HTTP-Referer": "https://tubemaster.ai",
-          "X-Title": "TubeMaster AI"
-        } : {})
-      },
+      headers: headers,
       body: JSON.stringify({
         model: model,
         messages: messages,
@@ -77,7 +106,7 @@ const callAI = async (
         if (errObj.error && errObj.error.message) friendlyError = errObj.error.message;
       } catch (e) {}
       
-      throw new Error(`${provider} Error (${response.status}): ${friendlyError}`);
+      throw new Error(`AI Error (${response.status}): ${friendlyError}`);
     }
 
     const data = await response.json();
@@ -91,9 +120,6 @@ const callAI = async (
 // --- EXPORTED SERVICES ---
 
 export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
-  // UPDATED MODEL: llama-3.3-70b-versatile (Latest Stable)
-  const model = 'llama-3.3-70b-versatile';
-  
   const systemPrompt = `You are a YouTube SEO expert. Return a valid JSON object containing an array "keywords".`;
   const userPrompt = `
     Topic: "${topic}"
@@ -103,7 +129,7 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
   `;
 
   try {
-    const jsonStr = await callAI('GROQ', model, [
+    const jsonStr = await callAI('GROQ', GROQ_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ], true);
@@ -117,7 +143,6 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
 };
 
 export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
-  const model = 'llama-3.3-70b-versatile';
   let contextData = "";
   
   // 1. Web Scraping Layer (Client-side proxy)
@@ -152,7 +177,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     }
   `;
 
-  const jsonStr = await callAI('GROQ', model, [
+  const jsonStr = await callAI('GROQ', GROQ_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -161,7 +186,6 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
 };
 
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
-  const model = 'llama-3.3-70b-versatile';
   const systemPrompt = "You are a professional YouTube Scriptwriter. Output strictly JSON.";
   const userPrompt = `
     Write a viral script for "${title}" targeting "${audience}".
@@ -169,7 +193,7 @@ export const generateScript = async (title: string, audience: string): Promise<S
     JSON Schema: { "title": "string", "estimatedDuration": "string", "targetAudience": "string", "sections": [ { "title": "string", "content": "string (script dialogue)", "duration": "string", "visualCue": "string (editor notes)", "logicStep": "Hook" | "Body" | "Conclusion" } ] }
   `;
 
-  const jsonStr = await callAI('GROQ', model, [
+  const jsonStr = await callAI('GROQ', GROQ_MODEL, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -178,18 +202,16 @@ export const generateScript = async (title: string, audience: string): Promise<S
 };
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
-  const model = 'llama-3.3-70b-versatile';
   const userPrompt = `Generate 10 viral, click-bait style YouTube titles for: "${topic}". Return JSON: { "titles": ["string"] }`;
-  const jsonStr = await callAI('GROQ', model, [{ role: "user", content: userPrompt }], true);
+  const jsonStr = await callAI('GROQ', GROQ_MODEL, [{ role: "user", content: userPrompt }], true);
   const parsed = JSON.parse(cleanJson(jsonStr));
   return parsed.titles || [];
 };
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
-  const model = 'llama-3.3-70b-versatile';
   const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
   // Using generic mode (no JSON enforcement) for simple text
-  return await callAI('GROQ', model, [{ role: "user", content: userPrompt }], false);
+  return await callAI('GROQ', GROQ_MODEL, [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
@@ -198,8 +220,7 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   // 1. Optimize Prompt with Groq
   if (optimize) {
     try {
-      const model = 'llama-3.3-70b-versatile';
-      finalPrompt = await callAI('GROQ', model, [{
+      finalPrompt = await callAI('GROQ', GROQ_MODEL, [{
         role: "user", 
         content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
       }], false);
@@ -225,23 +246,20 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // Use OpenRouter for Vision
+  // Use OpenRouter for Vision (using Grok Fast)
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
-
-  // Using x-ai/grok-2-vision-1212 for Vision.
-  // Fallback considerations: If this fails, user should try google/gemini-flash-1.5 in OpenRouter
-  const modelId = "x-ai/grok-2-vision-1212"; 
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://tubemaster.ai"
+      "HTTP-Referer": "https://tubemaster.ai",
+      "X-Title": "TubeMaster AI"
     },
     body: JSON.stringify({
-      model: modelId,
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
