@@ -147,8 +147,8 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
 };
 
 export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Promise<CompetitorAnalysisResult> => {
-  // Validate input data before calling AI
-  if (!scrapedData || !scrapedData.channel || scrapedData.channel.title === 'Unknown Channel') {
+  // Relaxed Validation: Accept if we have a channel object, even if title is a fallback
+  if (!scrapedData || !scrapedData.channel) {
     throw new Error("Invalid channel data provided to AI analysis.");
   }
 
@@ -157,7 +157,7 @@ export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Pro
   // Create a condensed summary of videos for the prompt to save tokens
   const videoSummary = scrapedData.recentVideos.length > 0 
     ? scrapedData.recentVideos.map(v => `- "${v.title}" (${v.viewCount} views, ${v.publishedTimeText})`).join('\n')
-    : "No recent videos found.";
+    : "No recent videos found. Base analysis on general niche assumptions.";
 
   const userPrompt = `
     Analyze this competitor channel data:

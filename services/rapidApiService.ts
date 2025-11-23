@@ -31,17 +31,17 @@ const getHeaders = () => {
 
 // --- HELPER FUNCTIONS ---
 
-// Recursively search for a key in an object
+// Improved recursive search for a key in a complex object
 const findValue = (obj: any, possibleKeys: string[]): any => {
   if (!obj || typeof obj !== 'object') return undefined;
   
-  // 1. Direct check
+  // 1. Direct check at current level
   for (const key of possibleKeys) {
-    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
   }
   
-  // 2. Check common wrapper keys 'data', 'stats', 'statistics', 'meta'
-  const wrappers = ['data', 'stats', 'statistics', 'meta', 'result', 'items'];
+  // 2. Check common API wrapper keys
+  const wrappers = ['data', 'stats', 'statistics', 'meta', 'result', 'items', 'channel', 'author', 'snippet'];
   for (const wrapper of wrappers) {
     if (obj[wrapper] && typeof obj[wrapper] === 'object') {
       const val = findValue(obj[wrapper], possibleKeys);
@@ -52,114 +52,127 @@ const findValue = (obj: any, possibleKeys: string[]): any => {
   return undefined;
 };
 
+// Robust array unwrapper that handles multiple nesting levels
 const unwrapArray = (data: any): any[] => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
-  if (Array.isArray(data.data)) return data.data;
-  if (Array.isArray(data.items)) return data.items;
-  if (Array.isArray(data.results)) return data.results;
-  if (Array.isArray(data.contents)) return data.contents;
+  
+  // Check common array container keys
+  const keys = ['data', 'items', 'results', 'contents', 'channels', 'videos'];
+  for (const k of keys) {
+      if (data[k]) {
+          if (Array.isArray(data[k])) return data[k];
+          // Recurse if the key points to an object (e.g. data.items)
+          if (typeof data[k] === 'object') {
+             const nested = unwrapArray(data[k]);
+             if (nested.length > 0) return nested;
+          }
+      }
+  }
+  
+  // Fallback: if data contains a single object that looks like a result, wrap it
+  if (data.id || data.channelId || data.title) return [data];
+  
   return [];
 };
 
 // --- CORE SERVICES ---
 
 export const resolveChannelId = async (input: string): Promise<string> => {
-  // 1. Check for ID in URL (Standard YouTube Channel ID format is UC...)
-  const idMatch = input.match(/(UC[\w-]{21}[AQgw])/);
+  let query = input.trim();
+  
+  // 1. Check for explicit Channel ID format (UC...)
+  // YouTube Channel IDs are 24 chars starting with UC
+  const idMatch = query.match(/^(UC[\w-]{21}[AQgw])$/);
   if (idMatch) return idMatch[1];
 
-  // 2. Extract query/handle
-  let query = input;
-  if (input.includes('youtube.com/')) {
+  // 2. Extract handle/ID from URL
+  if (query.includes('youtube.com/') || query.includes('youtu.be/')) {
     try {
-      const parts = input.split('youtube.com/');
-      // Handle /channel/, /c/, /user/, or /@handle
-      const afterDomain = parts[1].split(/[/?#]/)[0];
-      if (afterDomain.startsWith('@')) {
-        query = afterDomain;
-      } else if (parts[1].includes('channel/')) {
-         // Already handled by regex above usually, but fallback
-         const sub = parts[1].split('channel/')[1];
-         return sub.split(/[/?#]/)[0];
-      } else {
-         query = afterDomain;
+      // Remove protocol and domain
+      const cleanPath = query.replace(/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//, '');
+      const pathParts = cleanPath.split(/[/?#]/); // Split by slash, query, or hash
+      
+      for (const part of pathParts) {
+         if (part.startsWith('UC') && part.length === 24) return part; // Found ID in URL
+         if (part.startsWith('@')) {
+             query = part; // Found handle in URL
+             break;
+         }
+         if (part === 'channel' || part === 'c' || part === 'user') continue;
+         // If it's a vanity URL part (e.g. /MrBeast), use it
+         if (part.length > 0) query = part;
       }
     } catch(e) {}
   }
 
-  // Ensure handle format for search if it looks like a handle
-  if (!query.startsWith('@') && !query.startsWith('UC') && !query.includes(' ')) {
-    query = `@${query}`;
+  // 3. Search Strategy: Try with @, then without
+  const attempts = [];
+  if (query.startsWith('@')) {
+      attempts.push(query); // Try as is (@MrBeast)
+      attempts.push(query.substring(1)); // Try without @ (MrBeast)
+  } else {
+      attempts.push(`@${query}`); // Try with @ (@MrBeast)
+      attempts.push(query); // Try as is (MrBeast)
   }
 
-  console.log(`[RapidAPI] Searching for: ${query}`);
-
-  try {
-    const response = await fetch(`https://${RAPID_HOST}/search?query=${encodeURIComponent(query)}&type=channel`, {
-      method: 'GET',
-      headers: getHeaders()
-    });
+  for (const q of attempts) {
+    if (!q) continue;
+    console.log(`[RapidAPI] Resolving ID for: ${q}`);
     
-    if (!response.ok) {
-       if (response.status === 403 || response.status === 401) throw new Error("Invalid RapidAPI Key");
-       throw new Error(`Search failed: ${response.status}`);
+    try {
+      // Use type=channel to filter
+      const response = await fetch(`https://${RAPID_HOST}/search?query=${encodeURIComponent(q)}&type=channel`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      
+      if (response.ok) {
+        const rawData = await response.json();
+        const results = unwrapArray(rawData);
+        
+        // Find the first result that has a valid Channel ID
+        for (const r of results) {
+            // Search deeply for an ID field
+            const id = findValue(r, ['channelId', 'channel_id', 'id', 'externalId', 'authorId']);
+            if (id && typeof id === 'string' && id.startsWith('UC')) {
+                return id;
+            }
+        }
+      }
+    } catch (e) {
+      console.warn(`Search attempt failed for ${q}`, e);
     }
-    
-    const rawData = await response.json();
-    const results = unwrapArray(rawData);
-    
-    // Find first valid channel
-    const channel = results.find((r: any) => 
-      r.type === 'channel' || 
-      (r.channelId && r.channelId.startsWith('UC')) ||
-      (r.id && typeof r.id === 'string' && r.id.startsWith('UC'))
-    );
-
-    if (channel) {
-      return channel.channelId || channel.id;
-    }
-
-    // Fallback: If no channel type found, grab anything starting with UC
-    const anyResult = results.find((r: any) => r.id && r.id.startsWith && r.id.startsWith('UC'));
-    if (anyResult) return anyResult.id;
-
-    throw new Error('Channel not found via Search');
-  } catch (e: any) {
-    console.warn("Search Error:", e);
-    // If it was a handle search failure, maybe the API needs just the name
-    if (query.startsWith('@')) {
-       // Recursive retry without '@' is dangerous for loops, so we just throw for now or handle in UI
-    }
-    throw new Error(`Could not find channel for: ${query}`);
   }
+
+  throw new Error(`Could not find a valid Channel ID for "${input}". Try pasting the specific YouTube Channel URL.`);
 };
 
 export const getChannelStats = async (channelId: string): Promise<RapidChannelData> => {
   try {
-    console.log(`[RapidAPI] Getting Stats: ${channelId}`);
+    console.log(`[RapidAPI] Fetching Stats: ${channelId}`);
     const response = await fetch(`https://${RAPID_HOST}/channel?id=${channelId}`, {
       method: 'GET',
       headers: getHeaders()
     });
     
     const rawData = await response.json();
-    console.log('[RapidAPI] Stats Data:', rawData);
-
-    // Robust extraction
-    const title = findValue(rawData, ['title', 'name', 'channelName', 'channelTitle']) || 'Unknown Channel';
+    
+    // Robust Parsing using findValue
+    const title = findValue(rawData, ['title', 'name', 'channelName', 'channelTitle']) || channelId; // Fallback to ID if title missing
     const subCount = findValue(rawData, ['subscriberCountText', 'subscribersText', 'subscribers', 'subscriber_count']) || 'Hidden';
     const viewCount = findValue(rawData, ['views', 'viewCount', 'viewsText', 'viewCountText']) || '0';
     const videoCount = findValue(rawData, ['videoCount', 'videos', 'videoCountText']) || '0';
-    const desc = findValue(rawData, ['description', 'descriptionShort', 'shortDescription']) || '';
+    const desc = findValue(rawData, ['description', 'descriptionShort', 'shortDescription']) || 'No description available.';
     
-    // Avatar extraction is often nested in arrays
     let avatar = '';
     const avatarObj = findValue(rawData, ['avatar', 'thumbnails', 'image']);
     if (Array.isArray(avatarObj) && avatarObj.length > 0) {
-      avatar = avatarObj[0].url || avatarObj[0];
+       avatar = avatarObj[0].url || avatarObj[0];
     } else if (typeof avatarObj === 'string') {
-      avatar = avatarObj;
+       avatar = avatarObj;
+    } else if (avatarObj && avatarObj.url) {
+       avatar = avatarObj.url;
     }
 
     const isVerified = findValue(rawData, ['isVerified', 'verified']) === true;
@@ -176,23 +189,14 @@ export const getChannelStats = async (channelId: string): Promise<RapidChannelDa
     };
   } catch (e) {
     console.error("Stats API Error", e);
-    return {
-      id: channelId,
-      title: 'Unknown Channel',
-      description: 'API Error',
-      subscriberCount: '---',
-      viewCount: '---',
-      videoCount: '---',
-      avatar: '',
-      isVerified: false
-    };
+    throw new Error("Failed to fetch channel statistics.");
   }
 };
 
 export const getChannelVideos = async (channelId: string): Promise<RapidVideoData[]> => {
   try {
-    console.log(`[RapidAPI] Getting Videos: ${channelId}`);
-    // NOTE: Removed 'filter' parameter as it can cause empty results on some endpoints
+    console.log(`[RapidAPI] Fetching Videos: ${channelId}`);
+    // Request videos for the channel
     const response = await fetch(`https://${RAPID_HOST}/channel/videos?id=${channelId}`, {
       method: 'GET',
       headers: getHeaders()
@@ -201,32 +205,32 @@ export const getChannelVideos = async (channelId: string): Promise<RapidVideoDat
     const rawData = await response.json();
     const items = unwrapArray(rawData);
 
-    console.log(`[RapidAPI] Found ${items.length} videos`);
-
     return items.map((v: any) => {
-      const vidId = v.videoId || v.id;
+      // Find Video ID
+      const vidId = findValue(v, ['videoId', 'id']);
       if (!vidId || typeof vidId !== 'string') return null;
 
-      // Safe Thumbnail
+      // Safe Thumbnail Extraction
       let thumb = '';
-      if (v.thumbnails && v.thumbnails.length) thumb = v.thumbnails[0].url;
-      else if (v.thumbnail && v.thumbnail.length) thumb = v.thumbnail[0].url;
-      else if (typeof v.thumbnail === 'string') thumb = v.thumbnail;
+      const thumbObj = findValue(v, ['thumbnails', 'thumbnail']);
+      if (Array.isArray(thumbObj) && thumbObj.length > 0) thumb = thumbObj[0].url;
+      else if (thumbObj && thumbObj.url) thumb = thumbObj.url;
+      else if (typeof thumbObj === 'string') thumb = thumbObj;
 
       return {
         videoId: vidId,
-        title: v.title || 'Untitled',
-        viewCount: v.views || v.viewCountText || '0',
-        publishedTimeText: v.publishedTimeText || v.publishedText || v.published || '',
-        lengthText: v.lengthText || v.durationText || v.duration || '',
+        title: findValue(v, ['title', 'videoTitle']) || 'Untitled Video',
+        viewCount: findValue(v, ['views', 'viewCount', 'viewCountText']) || '0',
+        publishedTimeText: findValue(v, ['publishedTimeText', 'publishedText', 'date']) || '',
+        lengthText: findValue(v, ['lengthText', 'durationText', 'duration']) || '',
         thumbnail: thumb
       };
     })
     .filter(Boolean)
-    .slice(0, 20); // Top 20
+    .slice(0, 15); // Analyze top 15 videos to save tokens
 
   } catch (e) {
     console.error("Videos API Error", e);
-    return [];
+    return []; // Return empty array instead of throwing to allow partial analysis
   }
 };

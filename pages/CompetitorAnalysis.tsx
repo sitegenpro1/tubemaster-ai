@@ -26,9 +26,9 @@ export const CompetitorAnalysis: React.FC = () => {
     setAiResult(null);
     
     try {
-      // 1. Resolve ID
+      // 1. Resolve ID with new robust resolver
       const channelId = await resolveChannelId(url);
-      if (!channelId) throw new Error("Could not find Channel ID. Check URL.");
+      if (!channelId) throw new Error("Could not resolve Channel ID. Please try the full YouTube Channel URL.");
 
       // 2. Fetch Stats & Videos Parallel
       const [stats, videos] = await Promise.all([
@@ -36,9 +36,9 @@ export const CompetitorAnalysis: React.FC = () => {
         getChannelVideos(channelId)
       ]);
 
-      // Strict validation: If we don't have a valid channel title, something went wrong with the API
-      if (!stats || stats.title === 'Unknown Channel' || stats.title === '') {
-        throw new Error("API returned invalid channel data. The channel might be restricted.");
+      // Check if critical stats are present
+      if (!stats) {
+        throw new Error("Failed to retrieve channel statistics.");
       }
 
       const fullData = { channel: stats, recentVideos: videos };
@@ -52,7 +52,7 @@ export const CompetitorAnalysis: React.FC = () => {
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Analysis failed. Check API Key configuration or URL.");
+      setError(err.message || "Analysis failed. Ensure your RapidAPI Key is valid and has quota.");
       setStatus('idle');
     }
   };
@@ -67,7 +67,7 @@ export const CompetitorAnalysis: React.FC = () => {
           Competitor <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">Spy Engine</span>
         </h2>
         <p className="text-slate-400 max-w-2xl mx-auto">
-          Enter a competitor's channel handle (e.g., @MrBeast) or URL. Our system fetches real-time performance metrics and uses AI to generate an "Attack Plan" to outrank them.
+          Enter a competitor's handle (e.g., @MrBeast) or full channel URL. Our system fetches real-time performance metrics and uses AI to generate an "Attack Plan" to outrank them.
         </p>
       </div>
 
@@ -76,7 +76,7 @@ export const CompetitorAnalysis: React.FC = () => {
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
              <Input 
-               placeholder="Enter Channel Handle (e.g. @MrBeast) or URL"
+               placeholder="e.g. @MrBeast or youtube.com/@MrBeast"
                value={url}
                onChange={(e) => setUrl(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
@@ -88,9 +88,12 @@ export const CompetitorAnalysis: React.FC = () => {
         </div>
         
         {error && (
-          <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm flex items-center gap-2">
-            <span className="text-xl">⚠️</span> 
-            <span>{error}</span>
+          <div className="mt-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-sm flex items-start gap-3">
+            <span className="text-xl mt-0.5">⚠️</span> 
+            <div>
+              <p className="font-bold">Analysis Failed</p>
+              <p className="opacity-80">{error}</p>
+            </div>
           </div>
         )}
       </div>
@@ -100,7 +103,7 @@ export const CompetitorAnalysis: React.FC = () => {
         <div className="text-center py-12 animate-pulse space-y-4">
           <div className="w-16 h-16 bg-slate-800 rounded-full mx-auto flex items-center justify-center text-3xl">📡</div>
           <h3 className="text-xl font-bold text-white">Connecting to YouTube Data API...</h3>
-          <p className="text-slate-400">Fetching subscriber count, view metrics, and latest uploads.</p>
+          <p className="text-slate-400">Resolving Channel ID and fetching latest metrics.</p>
         </div>
       )}
 
@@ -118,8 +121,10 @@ export const CompetitorAnalysis: React.FC = () => {
           
           {/* Channel Overview Card */}
           <div className="bg-slate-900/60 border border-slate-700 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 backdrop-blur-md">
-             {scrapedData.channel.avatar && (
+             {scrapedData.channel.avatar ? (
                <img src={scrapedData.channel.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-slate-800 shadow-xl" />
+             ) : (
+                <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-4xl">📺</div>
              )}
              <div className="text-center md:text-left flex-1">
                <h3 className="text-3xl font-extrabold text-white flex items-center justify-center md:justify-start gap-2">
@@ -221,7 +226,7 @@ export const CompetitorAnalysis: React.FC = () => {
                   ) : (
                     <tr>
                       <td colSpan={3} className="p-8 text-center text-slate-500 italic">
-                        No videos found or channel is empty.
+                        No recent videos found.
                       </td>
                     </tr>
                   )}
