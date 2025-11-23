@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Button, Spinner, Badge } from '../components/UI';
+import { Button, Spinner } from '../components/UI';
 import { findKeywords } from '../services/geminiService';
 import { KeywordResult } from '../types';
 import { SEO } from '../components/SEO';
@@ -24,11 +24,11 @@ export const KeywordFinder: React.FC = () => {
       if (data && data.length > 0) {
         setResults(data);
       } else {
-        setError("No high-value keywords found for this specific topic.");
+        setError("No keywords found. Please check if your Groq API Key is set in .env");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setError("Keyword analysis failed. Please try again.");
+      setError(`Error: ${error.message || "Failed to fetch"}. Check console.`);
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export const KeywordFinder: React.FC = () => {
         <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
           Keyword <span className="text-brand-400">Deep Dive</span>
         </h2>
-        <p className="text-lg text-slate-400">10-Point Logic Analysis for Commercial Growth.</p>
+        <p className="text-lg text-slate-400">Powered by Groq Llama 3 (70b) Reasoning.</p>
       </div>
 
       <div className="max-w-3xl mx-auto space-y-4">
@@ -64,7 +64,7 @@ export const KeywordFinder: React.FC = () => {
             {loading ? <Spinner /> : 'Research'}
           </Button>
         </div>
-        {error && <p className="text-center text-rose-400 text-sm">{error}</p>}
+        {error && <p className="text-center text-rose-400 text-sm bg-rose-500/10 p-2 rounded">{error}</p>}
       </div>
 
       {results.length > 0 && (

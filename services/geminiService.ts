@@ -1,12 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
-import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult } from "../types";
+
+import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult } from "../types";
 
 // --- CONFIGURATION ---
 
-// Helper to ensure we get keys in Vite environment
-const getGeminiKey = () => {
+const getGroqKey = () => {
   // @ts-ignore
-  return import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY || "";
+  return import.meta.env.VITE_GROQ_API_KEY || "";
 };
 
 const getOpenRouterKey = () => {
@@ -14,15 +13,12 @@ const getOpenRouterKey = () => {
   return import.meta.env.VITE_OPENROUTER_API_KEY || "";
 };
 
-const ai = new GoogleGenAI({ apiKey: getGeminiKey() });
-
 // --- CORE HELPERS ---
 
 const cleanJson = (text: string): string => {
   if (!text) return "{}";
-  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  // Remove <think> tags if present
+  // Remove <think> tags if present (common in DeepSeek/Grok models)
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
   const firstBrace = clean.indexOf('{');
@@ -34,188 +30,173 @@ const cleanJson = (text: string): string => {
   return clean;
 };
 
-const compressImage = (base64Str: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = base64Str;
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      const MAX = 1024;
-      let w = img.width;
-      let h = img.height;
-      if (w > h) { if (w > MAX) { h = Math.round((h * MAX) / w); w = MAX; } }
-      else { if (h > MAX) { w = Math.round((w * MAX) / h); h = MAX; } }
-      
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      } else {
-        resolve(base64Str);
-      }
-    };
-    img.onerror = () => resolve(base64Str);
-  });
+// Generic Fetch Wrapper for Groq/OpenRouter to reduce code duplication
+const callAI = async (
+  provider: 'GROQ' | 'OPENROUTER',
+  model: string,
+  messages: any[],
+  jsonMode: boolean = true
+): Promise<string> => {
+  const apiKey = provider === 'GROQ' ? getGroqKey() : getOpenRouterKey();
+  const endpoint = provider === 'GROQ' 
+    ? "https://api.groq.com/openai/v1/chat/completions" 
+    : "https://openrouter.ai/api/v1/chat/completions";
+
+  if (!apiKey && provider !== 'GROQ') { 
+    // Allow Groq to fail gracefully or mock if needed, but here we throw
+    throw new Error(`Missing API Key for ${provider}`);
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.7,
+        response_format: jsonMode ? { type: "json_object" } : undefined
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`${provider} Error (${response.status}): ${err}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
+  } catch (error) {
+    console.error(`${provider} Call Failed:`, error);
+    throw error;
+  }
 };
 
 // --- EXPORTED SERVICES ---
 
 export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
-  const prompt = `
-    Act as a YouTube SEO Algorithm Expert.
+  // Using Llama-3-70b via Groq for high intelligence + JSON adherence
+  const systemPrompt = `You are a YouTube SEO expert. Return a valid JSON object containing an array "keywords".`;
+  const userPrompt = `
     Topic: "${topic}"
     Generate 10 highly specific keywords/tags.
-    Return strictly a JSON object: { "keywords": [ { "keyword": "...", "searchVolume": "...", "difficulty": 50, "opportunityScore": 80, "trend": "Rising", "intent": "Educational", "cpc": "$1.20", "competitionDensity": "Medium", "topCompetitor": "Channel Name", "videoAgeAvg": "2 years", "ctrPotential": "High" } ] }
+    Strictly follow this JSON schema:
+    { "keywords": [ { "keyword": "string", "searchVolume": "string", "difficulty": number (0-100), "opportunityScore": number (0-100), "trend": "Rising" | "Stable" | "Falling", "intent": "Educational" | "Commercial", "cpc": "string", "competitionDensity": "Low" | "Medium" | "High", "topCompetitor": "string", "videoAgeAvg": "string", "ctrPotential": "High" | "Medium" } ] }
   `;
+
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: { responseMimeType: 'application/json' }
-    });
+    const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ], true);
     
-    const parsed = JSON.parse(cleanJson(response.text || "{}"));
+    const parsed = JSON.parse(cleanJson(jsonStr));
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
     console.error("Keyword find error", e);
+    // Return empty array to prevent UI crash
     return [];
   }
 };
 
-// HYBRID MODEL: Web Scraper + AI Reasoning
 export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
   let contextData = "";
   
-  // 1. Web Scraping Layer
+  // 1. Web Scraping Layer (Client-side proxy)
   try {
-    // Use AllOrigins to proxy the request and avoid CORS
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
     const response = await fetch(proxyUrl);
-    
     if (response.ok) {
       const data = await response.json();
       const html = data.contents;
-      
-      // Regex extraction for key metadata (lighter than parsing full DOM)
       const titleMatch = html.match(/<title>(.*?)<\/title>/);
       const descMatch = html.match(/name="description" content="(.*?)"/);
-      const keywordsMatch = html.match(/name="keywords" content="(.*?)"/);
-      
-      const title = titleMatch ? titleMatch[1] : "Unknown Channel";
-      const description = descMatch ? descMatch[1] : "";
-      const keywords = keywordsMatch ? keywordsMatch[1] : "";
-      
-      contextData = `Channel Name: ${title}\nDescription: ${description}\nKeywords: ${keywords}`;
+      contextData = `Channel Title: ${titleMatch?.[1] || 'Unknown'}\nDescription: ${descMatch?.[1] || 'Unknown'}`;
     }
   } catch (e) {
-    console.warn("Scraping failed, proceeding with AI inference only.", e);
-    contextData = `Channel URL: ${channelUrl} (Metadata could not be scraped)`;
+    console.warn("Scraping failed", e);
+    contextData = `Channel URL: ${channelUrl}`;
   }
 
-  // 2. AI Reasoning Layer
-  const prompt = `
-    Analyze this competitor channel based on the available data:
-    ${contextData.substring(0, 2000)}
-    
-    If data is scarce, infer based on the channel name or likely niche.
-    
-    Task: Provide a strategic analysis.
-    Return JSON:
+  // 2. AI Reasoning (Groq)
+  const systemPrompt = "You are a YouTube Strategist. output strictly JSON.";
+  const userPrompt = `
+    Analyze this competitor data: ${contextData.substring(0, 1000)}
+    Provide a strategic analysis in this JSON format:
     {
-      "channelName": "...",
-      "subscriberEstimate": "e.g. 100k-500k",
-      "strengths": ["strength 1", "strength 2", "strength 3"],
-      "weaknesses": ["weakness 1", "weakness 2", "weakness 3"],
-      "contentGaps": ["gap 1", "gap 2", "gap 3"],
-      "topPerformingTopics": ["topic 1", "topic 2"],
-      "actionPlan": "One sentence strategy to beat them."
+      "channelName": "string",
+      "subscriberEstimate": "string",
+      "strengths": ["string"],
+      "weaknesses": ["string"],
+      "contentGaps": ["string"],
+      "topPerformingTopics": ["string"],
+      "actionPlan": "string"
     }
   `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  
-  return JSON.parse(cleanJson(response.text || "{}"));
+  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+  ], true);
+
+  return JSON.parse(cleanJson(jsonStr));
 };
 
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
-  const prompt = `
-    Write a YouTube script for "${title}" aimed at "${audience}".
+  const systemPrompt = "You are a professional YouTube Scriptwriter. Output strictly JSON.";
+  const userPrompt = `
+    Write a viral script for "${title}" targeting "${audience}".
     Structure: Hook -> Context -> Value -> Pattern Interrupt -> Payoff.
-    Return JSON: { "title": "...", "estimatedDuration": "...", "targetAudience": "...", "sections": [ { "title": "...", "content": "...", "duration": "...", "visualCue": "...", "logicStep": "..." } ] }
+    JSON Schema: { "title": "string", "estimatedDuration": "string", "targetAudience": "string", "sections": [ { "title": "string", "content": "string (script dialogue)", "duration": "string", "visualCue": "string (editor notes)", "logicStep": "Hook" | "Body" | "Conclusion" } ] }
   `;
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  return JSON.parse(cleanJson(response.text || "{}"));
+
+  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+  ], true);
+
+  return JSON.parse(cleanJson(jsonStr));
 };
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
-  const prompt = `Generate 10 click-worthy, viral-style YouTube titles for: "${topic}". Return JSON: { "titles": ["..."] }`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: { responseMimeType: 'application/json' }
-  });
-  const parsed = JSON.parse(cleanJson(response.text || "{}"));
+  const userPrompt = `Generate 10 viral, click-bait style YouTube titles for: "${topic}". Return JSON: { "titles": ["string"] }`;
+  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [{ role: "user", content: userPrompt }], true);
+  const parsed = JSON.parse(cleanJson(jsonStr));
   return parsed.titles || [];
 };
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
-  const prompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt
-  });
-  return response.text || "";
+  const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
+  // Using generic mode (no JSON enforcement) for simple text
+  return await callAI('GROQ', 'llama3-8b-8192', [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
   let finalPrompt = prompt;
-  
+
+  // 1. Optimize Prompt with Groq (Fast)
   if (optimize) {
     try {
-      const optimResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Optimize this image prompt for an AI image generator. Make it highly detailed. Prompt: "${prompt}". Style: ${style}, ${mood}. Output ONLY text.`
-      });
-      if (optimResponse.text) {
-        finalPrompt = optimResponse.text;
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  // Generate image using Gemini 2.5 Flash Image model
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [{ text: finalPrompt }]
-    }
-  });
-
-  let imageUrl = "";
-  if (response.candidates?.[0]?.content?.parts) {
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-        break;
-      }
+      finalPrompt = await callAI('GROQ', 'llama3-8b-8192', [{
+        role: "user", 
+        content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
+      }], false);
+    } catch (e) {
+      console.warn("Prompt optimization failed, using original");
     }
   }
 
-  if (!imageUrl) {
-    throw new Error("No image generated by Gemini");
-  }
+  // 2. Generate Image using Pollinations.ai (FREE, UNLIMITED, NO API KEY REQUIRED)
+  // This satisfies the "Unlimited" requirement perfectly.
+  // We use the Flux model via Pollinations
+  const encodedPrompt = encodeURIComponent(finalPrompt);
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
+
+  // We fetch it to ensure it's generated (hot-loading) before returning
+  await fetch(imageUrl);
 
   return {
     imageUrl: imageUrl,
@@ -226,74 +207,41 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   };
 };
 
-export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<any> => {
-  try {
-    const [cA, cB] = await Promise.all([compressImage(imgA), compressImage(imgB)]);
-    
-    // Explicitly using x-ai/grok-4.1-fast via OpenRouter as requested
-    if (provider === 'OPENROUTER') {
-      const apiKey = getOpenRouterKey();
-      if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing");
+export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
+  // We use OpenRouter for Vision as Groq's Vision support is limited/beta.
+  // We target a robust model like 'google/gemini-flash-1.5' or 'x-ai/grok-vision-beta' via OpenRouter
+  
+  const apiKey = getOpenRouterKey();
+  if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "x-ai/grok-4.1-fast",
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Analyze these two YouTube thumbnails. Which has a higher Click-Through Rate (CTR) potential? Critically analyze contrast, readability, facial expressions, and curiosity gaps. Return STRICT JSON with no markdown: { \"winner\": \"A\", \"scoreA\": 8, \"scoreB\": 6, \"reasoning\": \"...\", \"breakdown\": [{\"criterion\": \"Contrast\", \"winner\": \"A\", \"explanation\": \"...\"}] }" },
-                { type: "image_url", image_url: { url: cA } },
-                { type: "image_url", image_url: { url: cB } }
-              ]
-            }
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "google/gemini-flash-1.5", // Or 'x-ai/grok-beta' if available and preferred
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Analyze these two YouTube thumbnails. Which has higher CTR potential? Output strictly JSON: { \"winner\": \"A\" or \"B\", \"scoreA\": number, \"scoreB\": number, \"reasoning\": \"string\", \"breakdown\": [{\"criterion\": \"Contrast\", \"winner\": \"A\", \"explanation\": \"string\"}] }" },
+            { type: "image_url", image_url: { url: imgA } },
+            { type: "image_url", image_url: { url: imgB } }
           ]
-        })
-      });
+        }
+      ]
+    })
+  });
 
-      if (!response.ok) {
-        throw new Error(`OpenRouter/Grok Error: ${response.statusText}`);
-      }
+  if (!response.ok) throw new Error("Vision API Failed");
+  
+  const json = await response.json();
+  const content = json.choices?.[0]?.message?.content || "{}";
+  const result = JSON.parse(cleanJson(content));
 
-      const json = await response.json();
-      const content = json.choices?.[0]?.message?.content || "{}";
-      return JSON.parse(cleanJson(content));
-    }
-
-    // Fallback to Gemini if provider is not OpenRouter
-    const getBase64 = (dataUri: string) => dataUri.split(',')[1];
-    const mimeTypeA = cA.split(';')[0].split(':')[1] || 'image/jpeg';
-    const mimeTypeB = cB.split(';')[0].split(':')[1] || 'image/jpeg';
-    
-    const prompt = `Analyze these two thumbnails. Which has higher CTR? Return JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: mimeTypeA, data: getBase64(cA) } },
-          { inlineData: { mimeType: mimeTypeB, data: getBase64(cB) } },
-          { text: prompt }
-        ]
-      },
-      config: { responseMimeType: 'application/json' }
-    });
-
-    const result = JSON.parse(cleanJson(response.text || "{}"));
-    
-    if (!result || typeof result !== 'object') throw new Error("Invalid response");
-    if (!result.breakdown || !Array.isArray(result.breakdown)) {
-        result.breakdown = []; 
-    }
-    
-    return result;
-  } catch (error) {
-    console.error("Comparison Vision Error:", error);
-    throw error;
-  }
+  // Safety check for UI
+  if (!result.breakdown) result.breakdown = [];
+  return result;
 };

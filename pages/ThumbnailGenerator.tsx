@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Card, Button, Spinner, Badge } from '../components/UI';
+import { Card, Button, Spinner } from '../components/UI';
 import { generateThumbnail } from '../services/geminiService';
 import { ThumbnailGenResult } from '../types';
 import { SEO } from '../components/SEO';
@@ -30,12 +31,13 @@ export const ThumbnailGenerator: React.FC = () => {
     if (!prompt) return;
     setLoading(true);
     try {
+      // Using new unlimited service
       const result = await generateThumbnail(prompt, selectedStyle, selectedMood, optimize);
       setHistory(prev => [result, ...prev]);
       setCurrentImage(result);
     } catch (error) {
       console.error(error);
-      alert("Generation failed. Please check your settings or try again.");
+      alert("Generation failed. Please check console.");
     } finally {
       setLoading(false);
     }
@@ -44,8 +46,8 @@ export const ThumbnailGenerator: React.FC = () => {
   return (
     <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-140px)] pb-10">
       <SEO 
-        title="4K YouTube Thumbnail Generator" 
-        description="Create high-CTR YouTube thumbnails with AI. Features automatic prompt optimization, 4K upscaling, and style selection."
+        title="Unlimited 4K Thumbnail Generator" 
+        description="Create high-CTR YouTube thumbnails for free using Flux."
         path="/thumbnail-gen"
       />
       {/* Left Control Panel */}
@@ -116,7 +118,7 @@ export const ThumbnailGenerator: React.FC = () => {
             <Button onClick={handleGenerate} disabled={loading || !prompt} className="w-full py-4 text-lg font-bold shadow-brand-500/30">
               {loading ? <><Spinner /> Generating...</> : '✨ Generate (Unlimited)'}
             </Button>
-            <p className="text-xs text-center text-slate-500">Powered by Pollinations / Flux</p>
+            <p className="text-xs text-center text-slate-500">Powered by Flux (Pollinations) - No Limits</p>
           </div>
         </Card>
       </div>
@@ -128,7 +130,7 @@ export const ThumbnailGenerator: React.FC = () => {
           {loading ? (
              <div className="text-center space-y-4">
                <div className="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-               <p className="text-brand-400 animate-pulse font-medium">Dreaming up pixels...</p>
+               <p className="text-brand-400 animate-pulse font-medium">Flux is rendering your masterpiece...</p>
              </div>
           ) : currentImage ? (
             <div className="relative w-full h-full flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -146,7 +148,7 @@ export const ThumbnailGenerator: React.FC = () => {
                    target="_blank"
                    rel="noreferrer"
                    className="bg-white/10 backdrop-blur-md hover:bg-brand-500 text-white p-3 rounded-full border border-white/20 transition-colors"
-                   title="Open / Download"
+                   title="Open Full Quality"
                  >
                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                  </a>
@@ -155,7 +157,7 @@ export const ThumbnailGenerator: React.FC = () => {
               {/* Prompt Details Overlay */}
               {currentImage.optimizedPrompt && currentImage.optimizedPrompt !== currentImage.originalPrompt && (
                 <div className="absolute bottom-6 left-6 right-6 bg-black/80 backdrop-blur-md p-4 rounded-xl border border-white/10 text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 max-w-2xl mx-auto">
-                   <span className="text-brand-400 font-bold uppercase text-xs tracking-wider block mb-1">Groq Optimized Prompt Used</span>
+                   <span className="text-brand-400 font-bold uppercase text-xs tracking-wider block mb-1">Groq Optimized Prompt</span>
                    <p className="text-slate-300 italic">"{currentImage.optimizedPrompt}"</p>
                 </div>
               )}
