@@ -4,9 +4,9 @@ import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenRe
 // --- CONFIGURATION ---
 
 // Centralized Model Definitions
-// Text Tools -> GROQ Provider (as requested)
+// Text Tools -> GROQ Provider (gpt-oss-120b as requested)
 const TEXT_MODEL = 'openai/gpt-oss-120b'; 
-// Vision Tools -> OPENROUTER Provider (as requested)
+// Vision Tools -> OPENROUTER Provider
 const VISION_MODEL = "x-ai/grok-4.1-fast";
 
 const getEnvVar = (key: string): string => {
@@ -165,7 +165,7 @@ export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Pro
 
     Task:
     1. Identify content gaps (what topics are missing or underperforming?).
-    2. Analyze what is working (high views relative to subs).
+    2. Analyze what is working (high views relative to subs). EXTRACT SPECIFIC KEYWORDS/NICHES from the high performing videos.
     3. Create a "Steal Their Traffic" action plan.
 
     Provide a strategic analysis in this JSON format:
@@ -174,9 +174,9 @@ export const analyzeCompetitor = async (scrapedData: RapidFullAnalysisData): Pro
       "subscriberEstimate": "string",
       "strengths": ["string"],
       "weaknesses": ["string"],
-      "contentGaps": ["string"],
-      "topPerformingTopics": ["string"],
-      "actionPlan": "string"
+      "contentGaps": ["string (Topic ideas they missed)"],
+      "topPerformingTopics": ["string (Specific keywords/niches driving views)"],
+      "actionPlan": "string (Strategic advice)"
     }
   `;
 

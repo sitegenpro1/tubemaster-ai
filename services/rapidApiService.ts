@@ -21,12 +21,23 @@ const getApiKey = () => {
 const getHeaders = () => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error("Configuration Error: VITE_RAPID_API_KEY is missing in environment variables. Please add it to Vercel/Netlify settings.");
+    throw new Error("Configuration Error: VITE_RAPID_API_KEY is missing. Add it to Vercel Environment Variables.");
   }
   return {
     'x-rapidapi-key': apiKey,
     'x-rapidapi-host': RAPID_HOST
   };
+};
+
+/**
+ * HELPER: Safe Data Extractor
+ * The Scrappa API sometimes returns data in `data`, `results`, `items`, or `contents`.
+ * This helper checks all possible locations to prevent crashes.
+ */
+const getArrayFromResponse = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return data.results || data.items || data.contents || data.videos || data.data || [];
 };
 
 // Helper to extract channel ID from various URL formats or search for handle
@@ -38,17 +49,16 @@ export const resolveChannelId = async (input: string): Promise<string> => {
   // 2. Extract handle or query
   let query = input;
   if (input.includes('youtube.com/')) {
-    // Handle formats like youtube.com/@handle or youtube.com/c/name
     const parts = input.split('youtube.com/');
-    query = parts[1].split('/')[0];
+    query = parts[1].split('/')[0].split('?')[0]; // Remove query params
   }
   
-  // Ensure we are searching for a handle if it looks like one, otherwise just text
+  // Ensure we are searching for a handle if it looks like one
   if (!query.startsWith('@') && !query.startsWith('UC') && !query.includes(' ')) {
     query = `@${query}`;
   }
 
-  // 3. Search for the channel using the API
+  // 3. Search for the channel
   try {
     const response = await fetch(`https://${RAPID_HOST}/search?query=${encodeURIComponent(query)}&type=channel`, {
       method: 'GET',
@@ -61,29 +71,26 @@ export const resolveChannelId = async (input: string): Promise<string> => {
     }
     
     const data = await response.json();
-    
-    // Scrappa "Unlimited YouTube API" structure:
-    // { results: [ { position: 1, type: "channel", channel: { id: "...", ... } } ] }
-    const results = data.results || data.data || [];
+    const results = getArrayFromResponse(data);
     
     // Filter for actual channels
     const channelItem = results.find((item: any) => 
-      item.type === 'channel' || (item.channel && item.channel.id)
+      item.type === 'channel' || (item.channelId && !item.videoId)
     );
     
     if (channelItem) {
-        return channelItem.channel?.id || channelItem.id;
+        return channelItem.channelId || channelItem.id;
     }
     
-    // Fallback if structure is flat or different
-    if (results.length > 0 && results[0].id) {
+    // Fallback: Use first result ID if it looks like a channel ID
+    if (results.length > 0 && results[0].id && results[0].id.startsWith('UC')) {
         return results[0].id;
     }
     
     throw new Error('Channel not found');
   } catch (e: any) {
     console.error("ID Resolution Error", e);
-    throw new Error(`Could not find channel for: ${query}. Please check the handle or API Key.`);
+    throw new Error(`Could not find channel: ${query}. Please check your spelling or API Key.`);
   }
 };
 
@@ -96,42 +103,58 @@ export const getChannelStats = async (channelId: string): Promise<RapidChannelDa
     
     const data = await response.json();
     
-    // API returns specific fields, we map them to our interface
-    // Note: Scrappa often nests stats in a 'stats' object or root
+    // The API might return the object directly OR wrapped in a 'meta' or 'stats' object
+    // We use fallback logic || to catch values wherever they are.
     
-    const stats = data.stats || {};
-    
+    const stats = data.stats || data.statistics || {};
+    const meta = data.meta || data;
+
     return {
-      id: data.id || channelId,
-      title: data.title || data.name || 'Unknown',
-      description: data.description || '',
-      subscriberCount: stats.subscribersText || stats.subscribers || data.subscribers || 'Hidden',
-      viewCount: stats.views || data.views || '0',
-      videoCount: stats.videos || data.videoCount || '0',
-      avatar: data.avatar?.[0]?.url || data.avatar || '',
-      isVerified: data.isVerified || false
+      id: meta.id || channelId,
+      title: meta.title || meta.name || 'Unknown Channel',
+      description: meta.description || '',
+      subscriberCount: stats.subscribersText || stats.subscribers || meta.subscribers || 'Hidden',
+      viewCount: stats.views || meta.views || '0',
+      videoCount: stats.videos || stats.videoCount || meta.videoCount || '0',
+      avatar: (meta.avatar && meta.avatar[0]?.url) || meta.avatar || (meta.thumbnails && meta.thumbnails[0]?.url) || '',
+      isVerified: meta.isVerified || false
     };
   } catch (e) {
     console.error("Stats Fetch Error", e);
-    throw new Error('Failed to fetch channel stats');
+    // Return a safe "Empty" object instead of crashing, allowing partial data display
+    return {
+      id: channelId,
+      title: 'Channel Found (Stats Hidden)',
+      description: 'Could not retrieve full stats.',
+      subscriberCount: '---',
+      viewCount: '---',
+      videoCount: '---',
+      avatar: '',
+      isVerified: false
+    };
   }
 };
 
 export const getChannelVideos = async (channelId: string): Promise<RapidVideoData[]> => {
   try {
-    // Fetch videos, sorted by newest to see what they are doing NOW
+    // Fetch videos, sorted by newest
     const response = await fetch(`https://${RAPID_HOST}/channel/videos?id=${channelId}&filter=videos_latest`, {
       method: 'GET',
       headers: getHeaders()
     });
     
     const data = await response.json();
-    const contents = data.items || data.contents || data.videos || [];
+    const contents = getArrayFromResponse(data);
     
     return contents.map((v: any) => {
       // Map varying API response structures
       const vidId = v.videoId || v.id;
       if (!vidId) return null;
+
+      // Safe Thumbnail Extraction
+      let thumb = '';
+      if (v.thumbnails && v.thumbnails.length > 0) thumb = v.thumbnails[v.thumbnails.length - 1]?.url; // Best quality usually last
+      else if (v.thumbnail && v.thumbnail.length > 0) thumb = v.thumbnail[0]?.url;
 
       return {
         videoId: vidId,
@@ -139,11 +162,12 @@ export const getChannelVideos = async (channelId: string): Promise<RapidVideoDat
         viewCount: v.views || v.viewCountText || '0',
         publishedTimeText: v.publishedTimeText || v.published || 'Recently',
         lengthText: v.durationText || v.lengthText || '',
-        thumbnail: v.thumbnails?.[0]?.url || v.thumbnail?.[0]?.url || ''
+        thumbnail: thumb
       };
     }).filter(Boolean).slice(0, 20); // Get top 20 for AI analysis
   } catch (e) {
     console.error("Videos Fetch Error", e);
-    throw new Error('Failed to fetch videos');
+    // Return empty array instead of crashing so AI can still try to analyze stats
+    return [];
   }
 };

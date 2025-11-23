@@ -60,7 +60,7 @@ export const CompetitorAnalysis: React.FC = () => {
           Competitor <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-500">Spy Engine</span>
         </h2>
         <p className="text-slate-400 max-w-2xl mx-auto">
-          Enter a competitor's channel handle or URL. Our system fetches real-time performance metrics and uses AI to generate an "Attack Plan" to outrank them.
+          Enter a competitor's channel handle (e.g., @MrBeast) or URL. Our system fetches real-time performance metrics and uses AI to generate an "Attack Plan" to outrank them.
         </p>
       </div>
 
@@ -159,8 +159,23 @@ export const CompetitorAnalysis: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-               <Card title="Content Gaps" className="h-full border-amber-500/20 bg-amber-900/5">
-                 <p className="text-xs text-slate-500 mb-4">Topics this channel is missing or under-serving:</p>
+               <Card title="Winning Niches & Keywords" className="border-indigo-500/20 bg-indigo-900/5">
+                 <p className="text-xs text-slate-500 mb-4">Top performing topics driving views:</p>
+                 <div className="flex flex-wrap gap-2">
+                   {aiResult.topPerformingTopics && aiResult.topPerformingTopics.length > 0 ? (
+                     aiResult.topPerformingTopics.map((topic, i) => (
+                       <span key={i} className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold">
+                         #{topic.replace(/ /g, '')}
+                       </span>
+                     ))
+                   ) : (
+                     <span className="text-slate-500 text-sm">No specific trend identified.</span>
+                   )}
+                 </div>
+               </Card>
+
+               <Card title="Content Gaps" className="border-amber-500/20 bg-amber-900/5">
+                 <p className="text-xs text-slate-500 mb-4">Topics this channel is missing:</p>
                  <div className="space-y-3">
                    {aiResult.contentGaps.map((gap, i) => (
                      <div key={i} className="flex items-start gap-3 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
