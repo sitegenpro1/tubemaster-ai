@@ -8,6 +8,9 @@ import { ThumbnailGenerator } from './pages/ThumbnailGenerator';
 import { ThumbnailCompare } from './pages/ThumbnailCompare';
 import { CompetitorAnalysis } from './pages/CompetitorAnalysis';
 import { TitleTime } from './pages/TitleTime';
+import { About } from './pages/About';
+import { Contact } from './pages/Contact';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 
 function App() {
   // Simple state-based navigation instead of react-router
@@ -29,6 +32,12 @@ function App() {
         return <CompetitorAnalysis />;
       case 'title-time':
         return <TitleTime />;
+      case 'about':
+        return <About />;
+      case 'contact':
+        return <Contact />;
+      case 'privacy':
+        return <PrivacyPolicy />;
       default:
         return <Home onNavigate={setCurrentView} />;
     }

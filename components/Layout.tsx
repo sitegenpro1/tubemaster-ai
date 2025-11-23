@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface LayoutProps {
@@ -122,7 +123,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                   </div>
                 </button>
               ))}
-              <div className="pt-6 mt-6 border-t border-slate-800/50">
+              {/* Added mobile links for new pages */}
+              <div className="border-t border-slate-800/50 pt-4 space-y-2">
+                 <button onClick={() => handleNavClick('about')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">About Us</button>
+                 <button onClick={() => handleNavClick('contact')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">Contact</button>
+                 <button onClick={() => handleNavClick('privacy')} className="block w-full text-left px-5 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900">Privacy Policy</button>
+              </div>
+
+              <div className="pt-6 mt-2 border-t border-slate-800/50">
                 <div className="flex items-center justify-between px-2 text-sm text-slate-500 font-mono">
                   <span>System Status</span>
                   <span className="flex items-center gap-2 text-emerald-400">
@@ -151,7 +159,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
             
             {/* Brand Column */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('home')}>
                 <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
                     <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
@@ -186,11 +194,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
             {/* Resources Column */}
             <div>
-              <h4 className="text-white font-bold mb-4">Resources</h4>
+              <h4 className="text-white font-bold mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-slate-400">
-                <li className="hover:text-brand-400 cursor-pointer">Documentation</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('about')}>About Us</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('contact')}>Contact Support</li>
                 <li className="hover:text-brand-400 cursor-pointer">API Status</li>
-                <li className="hover:text-brand-400 cursor-pointer">Creator Blog</li>
                 <li className="hover:text-brand-400 cursor-pointer">Pricing</li>
               </ul>
             </div>
@@ -199,9 +207,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
             <div>
               <h4 className="text-white font-bold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-slate-400">
-                <li className="hover:text-brand-400 cursor-pointer">Privacy Policy</li>
-                <li className="hover:text-brand-400 cursor-pointer">Terms of Service</li>
-                <li className="hover:text-brand-400 cursor-pointer">Cookie Policy</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Privacy Policy</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Terms of Service</li>
+                <li className="hover:text-brand-400 cursor-pointer" onClick={() => onNavigate('privacy')}>Cookie Policy</li>
                 <li className="flex items-center gap-2 mt-4 text-xs text-slate-600">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   Systems Operational
