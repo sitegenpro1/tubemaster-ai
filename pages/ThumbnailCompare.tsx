@@ -10,6 +10,7 @@ export const ThumbnailCompare: React.FC = () => {
   const [imgB, setImgB] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ThumbnailCompareResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>, setImg: (s: string) => void) => {
     const file = e.target.files?.[0];
@@ -24,13 +25,18 @@ export const ThumbnailCompare: React.FC = () => {
     if (!imgA || !imgB) return;
     setLoading(true);
     setResult(null);
+    setError(null);
+
     try {
-      // Changed to single call without 'OPENROUTER' param, as service handles it
       const data = await compareThumbnailsVision(imgA, imgB);
-      setResult(data);
+      if (data && (data.winner || data.reasoning)) {
+        setResult(data);
+      } else {
+        throw new Error("Received empty analysis.");
+      }
     } catch (e) {
       console.error(e);
-      alert("Comparison failed. Check your API Keys or try again later.");
+      setError("Comparison failed. Both Grok and Gemini services were unavailable or could not process these images.");
     } finally {
       setLoading(false);
     }
@@ -42,7 +48,7 @@ export const ThumbnailCompare: React.FC = () => {
       
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Thumbnail A/B Simulator</h2>
-        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span>.</p>
+        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span> with Gemini Fallback.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -67,20 +73,21 @@ export const ThumbnailCompare: React.FC = () => {
         ))}
       </div>
 
-      <div className="text-center">
+      <div className="text-center space-y-4">
         <Button onClick={handleCompare} disabled={loading || !imgA || !imgB} className="px-10 py-4 text-lg rounded-full">
-          {loading ? <Spinner /> : 'Predict Winner (Grok)'}
+          {loading ? <Spinner /> : 'Predict Winner'}
         </Button>
+        {error && <p className="text-rose-400">{error}</p>}
       </div>
 
       {result && (
         <div className="animate-slide-up space-y-6">
           <Card className="bg-gradient-to-br from-slate-900 to-slate-950">
-             <h3 className="text-xl font-bold text-white mb-2">Grok Analysis</h3>
-             <p className="text-slate-300 leading-relaxed">{result.reasoning}</p>
+             <h3 className="text-xl font-bold text-white mb-2">AI Analysis</h3>
+             <p className="text-slate-300 leading-relaxed">{result.reasoning || "No detailed reasoning provided."}</p>
           </Card>
           
-          {result.breakdown && result.breakdown.length > 0 && (
+          {result.breakdown && result.breakdown.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-4">
               {result.breakdown.map((b, i) => (
                 <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">
@@ -89,6 +96,8 @@ export const ThumbnailCompare: React.FC = () => {
                 </div>
               ))}
             </div>
+          ) : (
+             <p className="text-center text-slate-500 text-sm">Detailed breakdown metrics unavailable for this comparison.</p>
           )}
         </div>
       )}
