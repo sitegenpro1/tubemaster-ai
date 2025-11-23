@@ -45,7 +45,6 @@ const callAI = async (
 
   if (!apiKey) { 
     console.warn(`Missing API Key for ${provider}`);
-    // Fallback error or mock could go here, but we throw to alert user
     throw new Error(`Please add VITE_${provider}_API_KEY to your .env file.`);
   }
 
@@ -71,7 +70,14 @@ const callAI = async (
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`${provider} Error (${response.status}): ${err}`);
+      // Parse error if possible to show friendly message
+      let friendlyError = err;
+      try {
+        const errObj = JSON.parse(err);
+        if (errObj.error && errObj.error.message) friendlyError = errObj.error.message;
+      } catch (e) {}
+      
+      throw new Error(`${provider} Error (${response.status}): ${friendlyError}`);
     }
 
     const data = await response.json();
@@ -85,7 +91,9 @@ const callAI = async (
 // --- EXPORTED SERVICES ---
 
 export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
-  // Use Llama 3 on Groq for speed and JSON reliability
+  // UPDATED MODEL: llama-3.3-70b-versatile (Latest Stable)
+  const model = 'llama-3.3-70b-versatile';
+  
   const systemPrompt = `You are a YouTube SEO expert. Return a valid JSON object containing an array "keywords".`;
   const userPrompt = `
     Topic: "${topic}"
@@ -95,7 +103,7 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
   `;
 
   try {
-    const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+    const jsonStr = await callAI('GROQ', model, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ], true);
@@ -104,16 +112,16 @@ export const findKeywords = async (topic: string): Promise<KeywordResult[]> => {
     return Array.isArray(parsed.keywords) ? parsed.keywords : [];
   } catch (e) {
     console.error("Keyword find error", e);
-    return [];
+    throw e; // Rethrow to show UI error
   }
 };
 
 export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorAnalysisResult> => {
+  const model = 'llama-3.3-70b-versatile';
   let contextData = "";
   
   // 1. Web Scraping Layer (Client-side proxy)
   try {
-    // Simple fetch to get basic meta data
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(channelUrl)}`;
     const response = await fetch(proxyUrl);
     if (response.ok) {
@@ -128,7 +136,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     contextData = `Channel URL: ${channelUrl}`;
   }
 
-  // 2. AI Reasoning (Groq)
+  // 2. AI Reasoning
   const systemPrompt = "You are a YouTube Strategist. Output strictly JSON.";
   const userPrompt = `
     Analyze this competitor data: ${contextData.substring(0, 1000)}
@@ -144,7 +152,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
     }
   `;
 
-  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+  const jsonStr = await callAI('GROQ', model, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -153,6 +161,7 @@ export const analyzeCompetitor = async (channelUrl: string): Promise<CompetitorA
 };
 
 export const generateScript = async (title: string, audience: string): Promise<ScriptResponse> => {
+  const model = 'llama-3.3-70b-versatile';
   const systemPrompt = "You are a professional YouTube Scriptwriter. Output strictly JSON.";
   const userPrompt = `
     Write a viral script for "${title}" targeting "${audience}".
@@ -160,7 +169,7 @@ export const generateScript = async (title: string, audience: string): Promise<S
     JSON Schema: { "title": "string", "estimatedDuration": "string", "targetAudience": "string", "sections": [ { "title": "string", "content": "string (script dialogue)", "duration": "string", "visualCue": "string (editor notes)", "logicStep": "Hook" | "Body" | "Conclusion" } ] }
   `;
 
-  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [
+  const jsonStr = await callAI('GROQ', model, [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
   ], true);
@@ -169,16 +178,18 @@ export const generateScript = async (title: string, audience: string): Promise<S
 };
 
 export const generateTitles = async (topic: string): Promise<string[]> => {
+  const model = 'llama-3.3-70b-versatile';
   const userPrompt = `Generate 10 viral, click-bait style YouTube titles for: "${topic}". Return JSON: { "titles": ["string"] }`;
-  const jsonStr = await callAI('GROQ', 'llama3-70b-8192', [{ role: "user", content: userPrompt }], true);
+  const jsonStr = await callAI('GROQ', model, [{ role: "user", content: userPrompt }], true);
   const parsed = JSON.parse(cleanJson(jsonStr));
   return parsed.titles || [];
 };
 
 export const suggestBestTime = async (title: string, audience: string, tags: string): Promise<string> => {
+  const model = 'llama-3.3-70b-versatile';
   const userPrompt = `Best time to publish video "${title}" for "${audience}". Keep it brief (2 sentences).`;
   // Using generic mode (no JSON enforcement) for simple text
-  return await callAI('GROQ', 'llama3-70b-8192', [{ role: "user", content: userPrompt }], false);
+  return await callAI('GROQ', model, [{ role: "user", content: userPrompt }], false);
 };
 
 export const generateThumbnail = async (prompt: string, style: string, mood: string, optimize: boolean): Promise<ThumbnailGenResult> => {
@@ -187,7 +198,8 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   // 1. Optimize Prompt with Groq
   if (optimize) {
     try {
-      finalPrompt = await callAI('GROQ', 'llama3-70b-8192', [{
+      const model = 'llama-3.3-70b-versatile';
+      finalPrompt = await callAI('GROQ', model, [{
         role: "user", 
         content: `Enhance this image prompt for an AI generator (Flux/Midjourney). Make it detailed, describing lighting and composition. Prompt: "${prompt}". Style: ${style}, Mood: ${mood}. Output ONLY the prompt text.`
       }], false);
@@ -213,13 +225,12 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
 };
 
 export const compareThumbnailsVision = async (imgA: string, imgB: string, provider: 'GROQ' | 'OPENROUTER'): Promise<ThumbnailCompareResult> => {
-  // Use OpenRouter for Vision (Grok 2 or Gemini Flash)
+  // Use OpenRouter for Vision
   const apiKey = getOpenRouterKey();
   if (!apiKey) throw new Error("VITE_OPENROUTER_API_KEY is missing. Cannot perform Vision analysis.");
 
-  // Using x-ai/grok-2-vision-1212 as requested/implied (Grok Vision)
-  // If this specific model ID is unavailable, OpenRouter often routes to a fallback or returns 404.
-  // Alternative robust choice: "google/gemini-2.0-flash-exp:free" or "google/gemini-flash-1.5"
+  // Using x-ai/grok-2-vision-1212 for Vision.
+  // Fallback considerations: If this fails, user should try google/gemini-flash-1.5 in OpenRouter
   const modelId = "x-ai/grok-2-vision-1212"; 
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -247,7 +258,12 @@ export const compareThumbnailsVision = async (imgA: string, imgB: string, provid
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Vision API Error: ${err}`);
+    let errorMsg = err;
+    try {
+       const e = JSON.parse(err);
+       if(e.error && e.error.message) errorMsg = e.error.message;
+    } catch(e){}
+    throw new Error(`Vision API Error: ${errorMsg}`);
   }
   
   const json = await response.json();
