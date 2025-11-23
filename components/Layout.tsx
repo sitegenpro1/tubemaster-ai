@@ -137,7 +137,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative z-0">
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:py-32 relative z-0">
         {children}
       </main>
 
