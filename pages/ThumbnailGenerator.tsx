@@ -46,7 +46,7 @@ export const ThumbnailGenerator: React.FC = () => {
     <div className="grid lg:grid-cols-12 gap-8 h-auto lg:h-[calc(100vh-140px)] pb-10">
       <SEO 
         title="Unlimited 4K Thumbnail Generator" 
-        description="Create high-CTR YouTube thumbnails for free using Flux."
+        description="Create high-CTR YouTube thumbnails for free using advanced AI."
         path="/thumbnail-gen"
       />
       {/* Left Control Panel */}
@@ -68,7 +68,7 @@ export const ThumbnailGenerator: React.FC = () => {
                      <input type="checkbox" checked={optimize} onChange={(e) => setOptimize(e.target.checked)} className="hidden" />
                      {optimize && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
                   </div>
-                  <span className="text-sm text-slate-400 group-hover:text-brand-400 transition-colors">Auto-Optimize Prompt (Groq)</span>
+                  <span className="text-sm text-slate-400 group-hover:text-brand-400 transition-colors">Auto-Optimize Prompt (Smart Logic)</span>
                 </label>
               </div>
             </div>
@@ -117,7 +117,7 @@ export const ThumbnailGenerator: React.FC = () => {
             <Button onClick={handleGenerate} disabled={loading || !prompt} className="w-full py-4 text-lg font-bold shadow-brand-500/30">
               {loading ? <><Spinner /> Generating...</> : '✨ Generate (Unlimited)'}
             </Button>
-            <p className="text-xs text-center text-slate-500">Powered by Flux (Pollinations) - No Limits</p>
+            <p className="text-xs text-center text-slate-500">Professional Grade Generative AI - No Limits</p>
           </div>
         </Card>
       </div>
@@ -129,7 +129,7 @@ export const ThumbnailGenerator: React.FC = () => {
           {loading ? (
              <div className="text-center space-y-4">
                <div className="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-               <p className="text-brand-400 animate-pulse font-medium">Flux is rendering your masterpiece...</p>
+               <p className="text-brand-400 animate-pulse font-medium">AI is rendering your masterpiece...</p>
              </div>
           ) : currentImage ? (
             <div className="relative w-full h-full flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -156,7 +156,7 @@ export const ThumbnailGenerator: React.FC = () => {
               {/* Prompt Details Overlay */}
               {currentImage.optimizedPrompt && currentImage.optimizedPrompt !== currentImage.originalPrompt && (
                 <div className="absolute bottom-6 left-6 right-6 bg-black/80 backdrop-blur-md p-4 rounded-xl border border-white/10 text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 max-w-2xl mx-auto">
-                   <span className="text-brand-400 font-bold uppercase text-xs tracking-wider block mb-1">Groq Optimized Prompt</span>
+                   <span className="text-brand-400 font-bold uppercase text-xs tracking-wider block mb-1">AI Optimized Prompt</span>
                    <p className="text-slate-300 italic">"{currentImage.optimizedPrompt}"</p>
                 </div>
               )}

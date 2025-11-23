@@ -23,11 +23,11 @@ export const KeywordFinder: React.FC = () => {
       if (data && data.length > 0) {
         setResults(data);
       } else {
-        setError("No keywords found. Please check if your Groq API Key is set in .env");
+        setError("No keywords found. Please try a broader term.");
       }
     } catch (error: any) {
       console.error(error);
-      setError(`Error: ${error.message || "Failed to fetch"}. Check console.`);
+      setError(`Error: ${error.message || "Failed to fetch"}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -40,14 +40,14 @@ export const KeywordFinder: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-20">
-      <SEO title="Keyword Explorer" description="Deep logic keyword research." path="/keywords" />
+      <SEO title="YT Keyword Finder" description="Deep logic keyword research tool for YouTube." path="/keywords" />
       
       <div className="text-center py-10 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] bg-blue-500/10 blur-[100px] -z-10 rounded-full"></div>
         <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
           Keyword <span className="text-brand-400">Deep Dive</span>
         </h2>
-        <p className="text-lg text-slate-400">Powered by Groq Llama 3 (70b) Reasoning.</p>
+        <p className="text-lg text-slate-400">Powered by Semantic Logic Engine.</p>
       </div>
 
       <div className="max-w-3xl mx-auto space-y-4 px-2">

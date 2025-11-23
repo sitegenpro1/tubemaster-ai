@@ -215,9 +215,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
             <p className="text-slate-600 text-sm">© {new Date().getFullYear()} TubeMaster AI Suite. All rights reserved.</p>
             <div className="flex items-center gap-2 text-xs text-slate-600 font-mono bg-slate-900/50 px-3 py-1 rounded border border-slate-800">
                <span>Powered by</span>
-               <span className="text-slate-400 font-bold">Groq</span>
-               <span>+</span>
-               <span className="text-slate-400 font-bold">Google Gemini</span>
+               <span className="text-slate-400 font-bold">Proprietary AI Logic</span>
             </div>
           </div>
         </div>
