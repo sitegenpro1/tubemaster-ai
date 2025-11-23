@@ -29,14 +29,16 @@ export const ThumbnailCompare: React.FC = () => {
 
     try {
       const data = await compareThumbnailsVision(imgA, imgB);
-      if (data && (data.winner || data.reasoning)) {
+      // Validate that we actually got a meaningful object back
+      if (data && typeof data === 'object') {
         setResult(data);
       } else {
-        throw new Error("Received empty analysis.");
+        throw new Error("Received empty analysis from AI.");
       }
-    } catch (e) {
-      console.error(e);
-      setError("Comparison failed. Both Grok and Gemini services were unavailable or could not process these images.");
+    } catch (e: any) {
+      console.error("Comparison Error:", e);
+      // Show the actual error message to help debugging (e.g. 404, 401)
+      setError(e.message || "Comparison failed. Please check your API Key and try again.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export const ThumbnailCompare: React.FC = () => {
       
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white">Thumbnail A/B Simulator</h2>
-        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span> with Gemini Fallback.</p>
+        <p className="text-slate-400 mt-2">Predict the winner using <span className="text-brand-400 font-bold">Grok Vision (xAI)</span>.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -61,7 +63,7 @@ export const ThumbnailCompare: React.FC = () => {
               onClick={() => document.getElementById(`file${item.id}`)?.click()}
               className="aspect-video bg-slate-950 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center cursor-pointer hover:border-slate-600 overflow-hidden relative"
             >
-              {item.img ? <img src={item.img} className="w-full h-full object-cover" /> : <span className="text-4xl">🖼️</span>}
+              {item.img ? <img src={item.img} className="w-full h-full object-cover" alt={`Thumbnail ${item.id}`} /> : <span className="text-4xl">🖼️</span>}
               <input id={`file${item.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e, item.set)} />
               {item.score !== undefined && (
                 <div className="absolute top-2 right-2 bg-black/80 px-3 py-1 rounded text-xl font-bold text-white">
@@ -77,7 +79,12 @@ export const ThumbnailCompare: React.FC = () => {
         <Button onClick={handleCompare} disabled={loading || !imgA || !imgB} className="px-10 py-4 text-lg rounded-full">
           {loading ? <Spinner /> : 'Predict Winner'}
         </Button>
-        {error && <p className="text-rose-400">{error}</p>}
+        {error && (
+          <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-lg max-w-xl mx-auto">
+            <p className="text-rose-400 font-medium">Error: {error}</p>
+            <p className="text-xs text-rose-500/70 mt-1">Check console for details.</p>
+          </div>
+        )}
       </div>
 
       {result && (
@@ -87,7 +94,8 @@ export const ThumbnailCompare: React.FC = () => {
              <p className="text-slate-300 leading-relaxed">{result.reasoning || "No detailed reasoning provided."}</p>
           </Card>
           
-          {result.breakdown && result.breakdown.length > 0 ? (
+          {/* SAFE RENDERING: Use optional chaining (?.) to prevent crash if breakdown is missing */}
+          {result?.breakdown && result.breakdown.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-4">
               {result.breakdown.map((b, i) => (
                 <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex justify-between items-center">

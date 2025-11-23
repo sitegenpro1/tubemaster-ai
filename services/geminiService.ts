@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { ThumbnailGenResult, CompetitorAnalysisResult, ScriptResponse, KeywordResult, ThumbnailCompareResult } from "../types";
 
@@ -17,23 +18,28 @@ const getEnv = (key: string) => {
   return '';
 };
 
-// Initialize Gemini
+// Initialize Gemini (Only for other tools, not for Thumbnail Compare)
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // --- CORE HELPERS ---
 
 const cleanJson = (text: string): string => {
   if (!text) return "{}";
+  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+  // Remove thinking traces if any
   clean = clean.replace(/<think>[\s\S]*?<\/think>/g, "");
   
+  // Find the first '{' and last '}'
   const firstBrace = clean.indexOf('{');
   const lastBrace = clean.lastIndexOf('}');
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     return clean.substring(firstBrace, lastBrace + 1);
   }
-  return clean;
+  
+  // If no braces found, return original (might be raw json) or empty object
+  return firstBrace !== -1 ? clean : "{}";
 };
 
 const compressImage = (base64Str: string): Promise<string> => {
@@ -71,7 +77,7 @@ const callOpenRouterGrok = async (systemPrompt: string, userPrompt: string, imag
   const openRouterKey = getEnv('VITE_OPENROUTER_API_KEY');
   
   if (!openRouterKey) {
-    throw new Error("Missing VITE_OPENROUTER_API_KEY");
+    throw new Error("Missing VITE_OPENROUTER_API_KEY. Please set this in your environment variables.");
   }
 
   const messages: any[] = [
@@ -91,7 +97,7 @@ const callOpenRouterGrok = async (systemPrompt: string, userPrompt: string, imag
     messages.push({ role: "user", content: userPrompt });
   }
 
-  // Fallback models if Grok fails or is unavailable
+  // Model ID as requested
   const MODEL = "x-ai/grok-2-vision-1212";
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -105,18 +111,25 @@ const callOpenRouterGrok = async (systemPrompt: string, userPrompt: string, imag
     body: JSON.stringify({
       model: MODEL, 
       messages: messages,
-      temperature: 0.7,
+      temperature: 0.5, // Lower temperature for more consistent JSON
       response_format: { type: "json_object" } 
     })
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenRouter Error (${response.status}): ${err}`);
+    const errorText = await response.text();
+    // Throwing a detailed error helps the UI show what happened (e.g., 404, 401)
+    throw new Error(`OpenRouter API Error (${response.status}): ${errorText}`);
   }
 
   const json = await response.json();
-  return json.choices?.[0]?.message?.content || "{}";
+  const content = json.choices?.[0]?.message?.content;
+  
+  if (!content) {
+    throw new Error("OpenRouter returned an empty response.");
+  }
+
+  return content;
 };
 
 
@@ -279,58 +292,21 @@ export const generateThumbnail = async (prompt: string, style: string, mood: str
   };
 };
 
-// Use Grok via OpenRouter for Thumbnail Comparison with Auto-Fallback
+// Strictly uses Grok via OpenRouter for Thumbnail Comparison. No Fallback.
 export const compareThumbnailsVision = async (imgA: string, imgB: string): Promise<ThumbnailCompareResult> => {
   const [cA, cB] = await Promise.all([compressImage(imgA), compressImage(imgB)]);
   
-  let useOpenRouter = true;
-  const openRouterKey = getEnv('VITE_OPENROUTER_API_KEY');
-
-  // Attempt Grok/OpenRouter first if key exists
-  if (openRouterKey) {
-    try {
-        const system = "You are an expert YouTube Strategist with deep knowledge of CTR (Click Through Rate) psychology. You analyze thumbnails.";
-        const user = `Analyze these two thumbnails. Which has higher CTR potential? Compare contrast, text readability, facial emotion, and curiosity gap. Return strictly JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
-        
-        console.log("Attempting OpenRouter Grok Vision...");
-        const jsonStr = await callOpenRouterGrok(system, user, [cA, cB]);
-        return JSON.parse(cleanJson(jsonStr));
-    } catch (error) {
-        console.warn("OpenRouter/Grok Failed (404 or other). Falling back to Gemini Vision.", error);
-        useOpenRouter = false;
-    }
-  } else {
-    console.log("No OpenRouter Key found. Skipping directly to Gemini Vision.");
-    useOpenRouter = false;
+  const system = "You are an expert YouTube Strategist with deep knowledge of CTR (Click Through Rate) psychology. You analyze thumbnails.";
+  const user = `Analyze these two thumbnails. Which has higher CTR potential? Compare contrast, text readability, facial emotion, and curiosity gap. Return strictly JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
+  
+  console.log("Calling OpenRouter with Grok Vision...");
+  
+  try {
+    const jsonStr = await callOpenRouterGrok(system, user, [cA, cB]);
+    return JSON.parse(cleanJson(jsonStr));
+  } catch (error) {
+    console.error("Grok Vision Analysis Failed:", error);
+    // Rethrow to let the UI handle the error state instead of crashing
+    throw error;
   }
-
-  // Fallback to Gemini Logic (Runs if OpenRouter failed OR key was missing)
-  if (!useOpenRouter) {
-    try {
-        const getBase64 = (dataUri: string) => dataUri.split(',')[1];
-        const mimeTypeA = cA.split(';')[0].split(':')[1] || 'image/jpeg';
-        const mimeTypeB = cB.split(';')[0].split(':')[1] || 'image/jpeg';
-        
-        const prompt = `Analyze these two thumbnails. Which has higher CTR? Return JSON: { "winner": "A", "scoreA": 8, "scoreB": 6, "reasoning": "...", "breakdown": [{"criterion": "Contrast", "winner": "A", "explanation": "..."}] }`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: {
-                parts: [
-                { inlineData: { mimeType: mimeTypeA, data: getBase64(cA) } },
-                { inlineData: { mimeType: mimeTypeB, data: getBase64(cB) } },
-                { text: prompt }
-                ]
-            },
-            config: { responseMimeType: 'application/json' }
-        });
-
-        return JSON.parse(cleanJson(response.text || "{}"));
-    } catch (geminiError) {
-        console.error("Gemini Vision also failed:", geminiError);
-        throw new Error("Both AI services failed to analyze the image.");
-    }
-  }
-
-  throw new Error("Unexpected execution path in compareThumbnailsVision");
 };
