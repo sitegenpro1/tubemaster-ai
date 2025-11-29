@@ -70,12 +70,16 @@ const callAI = async (
 ): Promise<string> => {
   
   // Smart Routing based on model name
-  // If the requested model looks like 'vendor/model', assume OpenRouter unless forced otherwise
   let effectiveProvider = provider;
   let effectiveModel = model;
   
+  // Logic Fix: Ensure openai/gpt-oss-120b stays on GROQ despite having a slash
   if (model.includes('/') && provider === 'GROQ') {
-     effectiveProvider = 'OPENROUTER';
+     if (model === 'openai/gpt-oss-120b') {
+        effectiveProvider = 'GROQ';
+     } else {
+        effectiveProvider = 'OPENROUTER';
+     }
   }
 
   const apiKey = effectiveProvider === 'GROQ' ? getGroqKey() : getOpenRouterKey();
