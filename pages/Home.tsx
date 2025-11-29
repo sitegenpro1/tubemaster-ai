@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Button, Card, SectionTitle } from '../components/UI';
 import { SEO } from '../components/SEO';
@@ -135,9 +134,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       
       {/* Hero Section */}
       <section className="relative min-h-[500px] md:min-h-[600px] flex items-center justify-center pt-0 md:pt-10 overflow-hidden">
-        {/* Abstract Background Mesh */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[1000px] h-[300px] md:h-[600px] bg-brand-600/20 blur-[60px] md:blur-[120px] rounded-full -z-10 opacity-50 animate-pulse" style={{ animationDuration: '5s' }}></div>
-        <div className="absolute top-0 right-0 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-purple-600/10 blur-[50px] md:blur-[100px] rounded-full -z-10"></div>
+        {/* Abstract Background Mesh - PERFORMANCE OPTIMIZED */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[1000px] h-[300px] md:h-[600px] bg-brand-600/20 blur-[60px] md:blur-[120px] rounded-full -z-10 opacity-50 animate-pulse transform-gpu translate-z-0" style={{ animationDuration: '5s' }}></div>
+        <div className="absolute top-0 right-0 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-purple-600/10 blur-[50px] md:blur-[100px] rounded-full -z-10 transform-gpu translate-z-0"></div>
         
         <div className="text-center max-w-4xl mx-auto space-y-6 md:space-y-8 px-4 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-slate-900/50 border border-brand-500/30 backdrop-blur-md mb-2 md:mb-4 animate-fade-in">
@@ -205,7 +204,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               onClick={() => !tool.locked && onNavigate(tool.id)}
               className={`group block h-full relative ${tool.locked ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
             >
-              <div className="h-full bg-slate-900/60 border border-slate-800 rounded-3xl p-8 hover:border-brand-500/50 transition-all duration-300 hover:bg-slate-800/80 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-900/20 relative overflow-hidden backdrop-blur-sm">
+              <div className="h-full bg-slate-900/60 border border-slate-800 rounded-3xl p-8 hover:border-brand-500/50 transition-all duration-300 hover:bg-slate-800/80 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-900/20 relative overflow-hidden backdrop-blur-sm transform-gpu will-change-transform">
                 
                 {/* Locked Overlay */}
                 {tool.locked && (
@@ -215,7 +214,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                     </div>
                     <h4 className="text-white font-bold text-lg">Pro Feature</h4>
                     <p className="text-slate-300 text-sm mt-1 mb-4">Upgrade to unlock this tool.</p>
-                    <button onClick={(e) => { e.stopPropagation(); onNavigate('pricing'); }} className="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm transition-colors">
+                    <button onClick={e => { e.stopPropagation(); onNavigate('pricing'); }} className="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm transition-colors">
                       View Plans
                     </button>
                   </div>

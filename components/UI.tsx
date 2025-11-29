@@ -7,7 +7,8 @@ export const Card: React.FC<{
   description?: string; 
   noPadding?: boolean 
 }> = ({ children, className = "", title, description, noPadding = false }) => (
-  <div className={`relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-brand-500/20 hover:bg-slate-900/70 group ${className}`}>
+  // Added transform-gpu and will-change-transform for smoother hover effects
+  <div className={`relative overflow-hidden rounded-2xl border border-white/5 bg-slate-900/60 backdrop-blur-xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-brand-500/20 hover:bg-slate-900/70 group transform-gpu will-change-transform ${className}`}>
     {/* Glass Shine Effect */}
     <div className="absolute inset-0 bg-glass-shine opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none duration-700" />
     
@@ -29,7 +30,7 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
   className = "", 
   ...props 
 }) => {
-  const baseStyles = "relative px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95 tracking-wide text-sm md:text-base overflow-hidden isolate";
+  const baseStyles = "relative px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95 tracking-wide text-sm md:text-base overflow-hidden isolate transform-gpu";
   
   const variants = {
     primary: "bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white shadow-lg shadow-brand-500/20 hover:shadow-brand-500/40 border border-transparent",

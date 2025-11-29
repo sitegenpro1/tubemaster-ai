@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { AdBanner } from './AdBanner';
@@ -17,7 +16,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   // Handle scroll effect for header
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
+    // PERFORMANCE FIX: Passive listener prevents scroll blocking
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -37,11 +37,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   ];
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-100 overflow-x-hidden">
+    <div className="min-h-screen text-slate-200 flex flex-col font-sans selection:bg-brand-500/30 selection:text-brand-100 overflow-x-hidden">
       
-      {/* Sticky Header */}
+      {/* Sticky Header - Added transform-gpu for better compositing */}
       <header 
-        className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${
+        className={`fixed top-0 w-full z-50 transition-all duration-300 border-b transform-gpu ${
           scrolled || isMobileMenuOpen 
             ? 'bg-[#020617]/90 backdrop-blur-xl border-slate-800/80 shadow-lg shadow-black/20' 
             : 'bg-transparent border-transparent'
@@ -179,8 +179,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
       {/* Footer */}
       <footer className="border-t border-slate-800/60 bg-[#020617] relative overflow-hidden">
-        {/* Abstract footer glow */}
-        <div className="absolute bottom-0 left-1/4 w-[300px] md:w-[500px] h-[300px] bg-brand-600/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none"></div>
+        {/* Abstract footer glow - Optimized */}
+        <div className="absolute bottom-0 left-1/4 w-[300px] md:w-[500px] h-[300px] bg-brand-600/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none transform-gpu translate-z-0"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-8">

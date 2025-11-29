@@ -76,15 +76,30 @@
       body {
         background-color: #020617;
         color: #e2e8f0;
-        /* Improved background with better mobile support */
-        background-image: 
-          radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 25%), 
-          radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
-        background-attachment: fixed;
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        /* PERFORMANCE FIX: Removed background-attachment: fixed */
       }
+
+      /* PERFORMANCE FIX: Hardware Accelerated Background */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background-image: 
+          radial-gradient(circle at 15% 50%, rgba(20, 184, 166, 0.08), transparent 25%), 
+          radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
+        background-color: #020617;
+        pointer-events: none;
+        transform: translateZ(0); /* Forces GPU Layer */
+        will-change: transform;
+      }
+
       /* Custom scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
@@ -114,13 +129,12 @@
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
     "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
