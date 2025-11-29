@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Button, Card, SectionTitle } from '../components/UI';
 import { SEO } from '../components/SEO';
@@ -12,6 +13,15 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   
   const tools = [
     {
+      title: 'Niche Validator',
+      desc: 'Stop wasting time on bad ideas. Check profitability, saturation, and get a viral video concept instantly before you start.',
+      icon: '📊',
+      id: 'niche-validator',
+      color: 'from-fuchsia-500 to-pink-600',
+      stat: 'Idea Check',
+      locked: false
+    },
+    {
       title: 'Competitor Analysis Tool',
       desc: 'Don\'t guess—know. Spy on top channels to uncover their content gaps, weakness analysis, and actionable attack plans to steal their traffic.',
       icon: '🕵️',
@@ -23,7 +33,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     {
       title: 'AI Explainer Board',
       desc: 'Create professional flowchart-style explainer graphics instantly. Perfect for educational videos and documentaries.',
-      icon: '📊',
+      icon: '📐',
       id: 'explainer-board',
       color: 'from-teal-400 to-teal-600',
       stat: 'Edu-Graphics',
@@ -144,7 +154,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 md:h-3 md:w-3 bg-brand-500"></span>
             </span>
-            <span className="text-xs md:text-sm font-medium text-brand-300 tracking-wide">New: Advanced Competitor Spy Engine</span>
+            <span className="text-xs md:text-sm font-medium text-brand-300 tracking-wide">New: Niche Validator Engine</span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.1]">
@@ -154,8 +164,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           
           <p className="text-base sm:text-lg md:text-2xl text-slate-400 max-w-xl md:max-w-2xl mx-auto leading-normal md:leading-relaxed">
             Explode your channel growth with the all-in-one suite. 
-            <span className="text-slate-200 font-semibold"> Find Keywords</span>, 
-            <span className="text-slate-200 font-semibold"> Write Viral Scripts</span>, and 
+            <span className="text-slate-200 font-semibold"> Validate Niches</span>, 
+            <span className="text-slate-200 font-semibold"> Find Keywords</span>, and 
             <span className="text-slate-200 font-semibold"> Create Explainer Graphics</span> that demand attention.
           </p>
           

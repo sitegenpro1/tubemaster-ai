@@ -10,7 +10,8 @@ export enum ToolType {
   TAGS_GENERATOR = 'tags-generator',
   DESCRIPTION_GENERATOR = 'description-generator',
   THUMBNAIL_DOWNLOADER = 'thumbnail-downloader',
-  EXPLAINER_BOARD = 'explainer-board'
+  EXPLAINER_BOARD = 'explainer-board',
+  NICHE_VALIDATOR = 'niche-validator'
 }
 
 export interface KeywordResult {
@@ -94,6 +95,21 @@ export interface FlowchartStep {
   title: string;
   description: string;
   iconHint: string; // e.g., "💰", "⚙️"
+}
+
+export interface NicheValidationResult {
+  niche: string;
+  profitabilityScore: number; // 0-100
+  competitionScore: number; // 0-100 (Higher means harder)
+  growthPotential: number; // 0-100
+  estimatedCPM: string; // e.g., "$12 - $18"
+  verdict: string; // e.g., "Hidden Gem" or "Saturated"
+  analysis: string;
+  viralIdea: {
+    title: string;
+    thumbnailConcept: string;
+    hookScript: string;
+  };
 }
 
 // --- RAPID API TYPES ---

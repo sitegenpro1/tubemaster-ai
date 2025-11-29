@@ -1,5 +1,5 @@
 
-import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult, RapidFullAnalysisData, DescriptionResult, FlowchartStep } from "../types";
+import { KeywordResult, ScriptResponse, CompetitorAnalysisResult, ThumbnailGenResult, ThumbnailCompareResult, RapidFullAnalysisData, DescriptionResult, FlowchartStep, NicheValidationResult } from "../types";
 
 // --- CONFIGURATION ---
 
@@ -69,16 +69,24 @@ const callAI = async (
   jsonMode: boolean = true
 ): Promise<string> => {
   
-  const isGroq = provider === 'GROQ';
-  const apiKey = isGroq ? getGroqKey() : getOpenRouterKey();
-  const endpoint = isGroq
+  // Smart Routing based on model name
+  // If the requested model looks like 'vendor/model', assume OpenRouter unless forced otherwise
+  let effectiveProvider = provider;
+  let effectiveModel = model;
+  
+  if (model.includes('/') && provider === 'GROQ') {
+     effectiveProvider = 'OPENROUTER';
+  }
+
+  const apiKey = effectiveProvider === 'GROQ' ? getGroqKey() : getOpenRouterKey();
+  const endpoint = effectiveProvider === 'GROQ'
     ? "https://api.groq.com/openai/v1/chat/completions"
     : "https://openrouter.ai/api/v1/chat/completions";
 
   if (!apiKey) { 
-    const missingKeyName = isGroq ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY';
-    console.warn(`Missing API Key for ${provider} (Model: ${model})`);
-    throw new Error(`Missing API Key. Please add ${missingKeyName} to your environment variables.`);
+    const missingKeyName = effectiveProvider === 'GROQ' ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY';
+    console.warn(`Missing API Key for ${effectiveProvider} (Model: ${effectiveModel})`);
+    // Non-blocking warning for UI logic, but fetch will likely fail
   }
 
   const headers: Record<string, string> = {
@@ -86,7 +94,7 @@ const callAI = async (
     "Content-Type": "application/json",
   };
 
-  if (!isGroq) {
+  if (effectiveProvider === 'OPENROUTER') {
     headers["HTTP-Referer"] = "https://tubemaster.ai";
     headers["X-Title"] = "TubeMaster AI";
   }
@@ -104,7 +112,7 @@ const callAI = async (
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        model: model,
+        model: effectiveModel,
         messages: safeMessages,
         temperature: 0.7,
         response_format: jsonMode ? { type: "json_object" } : undefined
@@ -120,16 +128,16 @@ const callAI = async (
       } catch (e) {}
       
       if (response.status === 401) {
-        throw new Error(`Authentication Failed (401) for ${provider}. Check ${isGroq ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY'}.`);
+        throw new Error(`Authentication Failed (401) for ${effectiveProvider}. Check ${effectiveProvider === 'GROQ' ? 'VITE_GROQ_API_KEY' : 'VITE_OPENROUTER_API_KEY'}.`);
       }
 
-      throw new Error(`${provider} Error (${response.status}): ${friendlyError}`);
+      throw new Error(`${effectiveProvider} Error (${response.status}): ${friendlyError}`);
     }
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "";
   } catch (error) {
-    console.error(`${provider} Call Failed:`, error);
+    console.error(`${effectiveProvider} Call Failed:`, error);
     throw error;
   }
 };
@@ -423,4 +431,52 @@ export const generateFlowchartSteps = async (topic: string): Promise<FlowchartSt
 
   const parsed = JSON.parse(cleanJson(jsonStr));
   return Array.isArray(parsed.steps) ? parsed.steps : [];
+};
+
+// --- NICHE VALIDATOR & SIMULATOR ---
+export const validateNiche = async (niche: string): Promise<NicheValidationResult> => {
+  const systemPrompt = "You are a YouTube Automation Expert and Niche Consultant. Your job is to analyze potential niches for profitability, competition, and viral potential.";
+  
+  const userPrompt = `
+    Analyze this Niche: "${niche}"
+    
+    Provide a data-driven validation report.
+    
+    1. Metrics:
+       - Profitability Score (0-100): Based on estimated CPM and affiliate potential.
+       - Competition Score (0-100): Higher means harder to break in.
+       - Growth Potential (0-100): Is this trending or evergreen?
+       - Estimated CPM: Range in USD (e.g. "$5 - $8").
+       - Verdict: Short summary (e.g. "Gold Mine", "Oversaturated", "High Risk").
+       - Analysis: 2 sentences explaining the verdict.
+       
+    2. Viral Video Simulation:
+       Generate a concept for the FIRST viral video this channel should post to break out.
+       - Title: Clickbait but honest.
+       - Thumbnail Concept: Description of the image.
+       - Hook Script: The first 15 seconds of text.
+       
+    Output STRICT JSON:
+    {
+      "niche": "${niche}",
+      "profitabilityScore": number,
+      "competitionScore": number,
+      "growthPotential": number,
+      "estimatedCPM": "string",
+      "verdict": "string",
+      "analysis": "string",
+      "viralIdea": {
+        "title": "string",
+        "thumbnailConcept": "string",
+        "hookScript": "string"
+      }
+    }
+  `;
+
+  const jsonStr = await callAI('GROQ', TEXT_MODEL, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
+  ], true);
+
+  return JSON.parse(cleanJson(jsonStr));
 };

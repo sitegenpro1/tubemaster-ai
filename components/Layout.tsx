@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { AdBanner } from './AdBanner';
@@ -30,6 +31,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
   const navItems = [
     { name: 'Home', id: 'home' },
     { name: 'Keywords', id: 'keywords' },
+    { name: 'Validator', id: 'niche-validator' },
     { name: 'Grabber', id: 'thumbnail-dl' },
     { name: 'Scripts', id: 'script' },
     { name: 'Spy Tool', id: 'competitors' },
@@ -125,7 +127,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-[#020617] border-b border-slate-800 animate-slide-down shadow-2xl absolute w-full left-0 top-16 md:top-20 h-[calc(100vh-4rem)] overflow-y-auto z-40">
+          <div className="lg:hidden bg-[#020617] border-b border-slate-800 shadow-2xl absolute w-full left-0 top-16 md:top-20 h-[calc(100vh-4rem)] overflow-y-auto z-40">
             <div className="px-4 py-6 space-y-4">
                {navItems.map((item) => (
                 <button
@@ -166,6 +168,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                      Login / Signup
                    </button>
                  )}
+                 <div className="grid grid-cols-2 gap-4 mt-6">
+                    <button onClick={() => handleNavClick('about')} className="text-slate-400 text-sm py-2">About Us</button>
+                    <button onClick={() => handleNavClick('contact')} className="text-slate-400 text-sm py-2">Contact</button>
+                 </div>
               </div>
             </div>
           </div>
@@ -205,9 +211,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
               <h4 className="text-white font-bold mb-4">Tools</h4>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('keywords')}>Keyword Explorer</li>
+                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('niche-validator')}>Niche Validator</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('explainer-board')}>AI Explainer Board</li>
                 <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('thumbnail-dl')}>Thumbnail Downloader</li>
-                <li className="hover:text-brand-400 cursor-pointer transition-colors" onClick={() => onNavigate('script')}>Script Writer</li>
               </ul>
             </div>
 

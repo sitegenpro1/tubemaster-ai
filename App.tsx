@@ -11,6 +11,7 @@ import { TagsGenerator } from './pages/TagsGenerator';
 import { DescriptionGenerator } from './pages/DescriptionGenerator';
 import { ThumbnailDownloader } from './pages/ThumbnailDownloader';
 import { ExplainerBoard } from './pages/ExplainerBoard';
+import { NicheValidator } from './pages/NicheValidator';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
@@ -73,6 +74,7 @@ function App() {
       case 'tags-gen': return <TagsGenerator />;
       case 'desc-gen': return <DescriptionGenerator />;
       case 'explainer-board': return <ExplainerBoard />;
+      case 'niche-validator': return <NicheValidator />;
       case 'pricing': return <Pricing onNavigate={handleNavigate} />;
       case 'login': return <Login onNavigate={handleNavigate} />;
       case 'about': return <About />;
