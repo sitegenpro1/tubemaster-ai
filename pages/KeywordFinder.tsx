@@ -80,7 +80,7 @@ export const KeywordFinder: React.FC = () => {
         
         {/* Error Message */}
         {error && (
-          <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm text-center animate-fade-in">
+          <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm text-center">
             {error}
           </div>
         )}
@@ -92,7 +92,7 @@ export const KeywordFinder: React.FC = () => {
 
       {/* Results Section - Automatically expands when data exists */}
       {results.length > 0 && (
-        <div className="space-y-6 animate-slide-up max-w-6xl mx-auto px-4">
+        <div className="space-y-6 max-w-6xl mx-auto px-4">
           <div className="flex justify-between items-end px-2 border-b border-slate-800 pb-4">
             <div>
               <h3 className="text-2xl font-bold text-white">Analysis Results</h3>
@@ -155,7 +155,7 @@ export const KeywordFinder: React.FC = () => {
                         </td>
                       </tr>
                       {expandedRow === i && (
-                        <tr className="bg-slate-900/80 animate-slide-down">
+                        <tr className="bg-slate-900/80">
                           <td colSpan={4} className="p-0">
                              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm border-t border-slate-800/50">
                                <div className="space-y-1">

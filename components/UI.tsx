@@ -95,7 +95,7 @@ export const Badge: React.FC<{ children: React.ReactNode; color?: 'green' | 'red
 };
 
 export const SectionTitle: React.FC<{ title: string; subtitle?: string; center?: boolean }> = ({ title, subtitle, center }) => (
-  <div className={`mb-12 ${center ? 'text-center' : ''} animate-fade-in`}>
+  <div className={`mb-12 ${center ? 'text-center' : ''}`}>
     <h2 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-sm">
       {title}
     </h2>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Button, Input, Spinner, SectionTitle } from '../components/UI';
 import { generateFlowchartSteps } from '../services/geminiService';
@@ -304,7 +303,7 @@ export const ExplainerBoard: React.FC = () => {
         </Card>
 
         {steps.length > 0 && (
-          <div className="space-y-4 animate-slide-up">
+          <div className="space-y-4">
             <div className="flex justify-between items-center text-white">
                <h3 className="font-bold text-xl">Preview</h3>
                <button 

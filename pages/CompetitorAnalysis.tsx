@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, Input, Button, Spinner, Badge } from '../components/UI';
 import { analyzeCompetitor, estimateCompetitorAnalysis } from '../services/geminiService';
@@ -118,7 +117,7 @@ export const CompetitorAnalysis: React.FC = () => {
 
       {/* Progress States */}
       {status === 'fetching_data' && (
-        <div className="text-center py-12 animate-pulse space-y-4">
+        <div className="text-center py-12 space-y-4">
           <div className="w-16 h-16 bg-slate-800 rounded-full mx-auto flex items-center justify-center text-3xl">📡</div>
           <h3 className="text-xl font-bold text-white">Connecting to YouTube Data API...</h3>
           <p className="text-slate-400">Resolving Channel ID and fetching latest metrics.</p>
@@ -126,7 +125,7 @@ export const CompetitorAnalysis: React.FC = () => {
       )}
 
       {status === 'analyzing_ai' && (
-        <div className="text-center py-12 animate-pulse space-y-4">
+        <div className="text-center py-12 space-y-4">
            <div className="w-16 h-16 bg-brand-900/30 rounded-full mx-auto flex items-center justify-center text-3xl">🧠</div>
            <h3 className="text-xl font-bold text-white">AI Strategy Processing...</h3>
            <p className="text-slate-400">
@@ -139,7 +138,7 @@ export const CompetitorAnalysis: React.FC = () => {
 
       {/* Results */}
       {status === 'complete' && aiResult && (
-        <div className="space-y-8 animate-slide-up">
+        <div className="space-y-8">
           
           {/* Channel Overview Card - CONDITIONAL Rendering */}
           {scrapedData ? (

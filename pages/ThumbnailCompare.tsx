@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, Button, Badge, SectionTitle } from '../components/UI';
 import { compareThumbnailsVision } from '../services/geminiService';
@@ -221,7 +220,7 @@ export const ThumbnailCompare: React.FC = () => {
                   
                   {/* Score Badge */}
                   {item.score !== undefined && (
-                    <div className="absolute top-4 right-4 z-30 animate-scale-in">
+                    <div className="absolute top-4 right-4 z-30">
                        <div className={`flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl border backdrop-blur-md shadow-lg ${item.win ? 'bg-emerald-500/90 border-emerald-400 text-white' : 'bg-slate-900/90 border-slate-700 text-slate-400'}`}>
                          <span className="text-lg md:text-2xl font-black leading-none">{item.score}</span>
                          <span className="text-[8px] md:text-[10px] font-bold uppercase">Score</span>
@@ -231,7 +230,7 @@ export const ThumbnailCompare: React.FC = () => {
 
                   {/* Winner Label */}
                   {item.win && (
-                    <div className="absolute bottom-0 left-0 w-full bg-emerald-600/90 text-white text-center py-2 font-black uppercase tracking-widest backdrop-blur-md animate-slide-up text-xs md:text-sm">
+                    <div className="absolute bottom-0 left-0 w-full bg-emerald-600/90 text-white text-center py-2 font-black uppercase tracking-widest backdrop-blur-md text-xs md:text-sm">
                       Recommended Winner
                     </div>
                   )}
@@ -280,7 +279,7 @@ export const ThumbnailCompare: React.FC = () => {
 
         {/* Results Section */}
         {result && (
-          <div ref={resultRef} className="mt-16 md:mt-20 animate-slide-up scroll-mt-24">
+          <div ref={resultRef} className="mt-16 md:mt-20 scroll-mt-24">
             <div className="bg-slate-900/60 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
                <div className="p-6 md:p-12 border-b border-slate-800">
                  <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center mb-6 md:mb-8">

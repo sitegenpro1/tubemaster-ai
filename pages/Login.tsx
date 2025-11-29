@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, Button, Input } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,7 +44,7 @@ export const Login: React.FC<LoginProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[70vh] px-4 animate-fade-in">
+    <div className="flex items-center justify-center min-h-[70vh] px-4">
       <SEO title="Login" description="Login to TubeMaster AI" path="/login" />
       
       <Card className="w-full max-w-md p-8 border-slate-700 shadow-2xl">

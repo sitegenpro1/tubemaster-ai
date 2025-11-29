@@ -44,25 +44,10 @@
               'glass-shine': 'linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.03) 50%, transparent 75%)',
             },
             animation: {
-              'fade-in': 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'slide-up': 'slideUp 0.5s ease-out forwards',
-              'slide-down': 'slideDown 0.3s ease-out forwards',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              slideUp: {
-                 '0%': { transform: 'translateY(20px)', opacity: '0' },
-                 '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              slideDown: {
-                 '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                 '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-10px)' },
@@ -128,11 +113,11 @@
 <script type="importmap">
 {
   "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "path": "https://aistudiocdn.com/path@^0.12.7",
     "url": "https://aistudiocdn.com/url@^0.11.4",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
     "vite": "https://aistudiocdn.com/vite@^7.2.4",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }

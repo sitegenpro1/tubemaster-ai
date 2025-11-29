@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Input, SectionTitle, Card, Badge } from '../components/UI';
 import { SEO } from '../components/SEO';
@@ -103,7 +102,7 @@ export const ThumbnailDownloader: React.FC = () => {
 
       {/* Results Section */}
       {videoId && (
-        <div className="max-w-6xl mx-auto px-4 animate-slide-up space-y-8">
+        <div className="max-w-6xl mx-auto px-4 space-y-8">
           
           <div className="flex items-center gap-3">
             <Badge color="red">ID: {videoId}</Badge>

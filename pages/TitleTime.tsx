@@ -51,7 +51,7 @@ export const TitleTime: React.FC = () => {
       </div>
 
       {activeTab === 'titles' && (
-        <div className="grid lg:grid-cols-2 gap-8 animate-fade-in">
+        <div className="grid lg:grid-cols-2 gap-8">
           <Card title="Title Generator">
             <div className="space-y-4">
               <div>

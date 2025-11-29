@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Spinner, Card, SectionTitle } from '../components/UI';
 import { generateSeoTags } from '../services/geminiService';
@@ -79,7 +78,7 @@ export const TagsGenerator: React.FC = () => {
 
       {/* Results */}
       {tags.length > 0 && (
-        <div className="max-w-4xl mx-auto px-4 animate-slide-up">
+        <div className="max-w-4xl mx-auto px-4">
           <div className="bg-slate-900/50 border border-cyan-500/30 rounded-3xl p-8 relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
              

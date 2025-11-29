@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Input, SectionTitle, Card } from '../components/UI';
 import { SEO } from '../components/SEO';
@@ -18,7 +17,7 @@ export const Contact: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 pb-20 animate-fade-in">
+    <div className="max-w-6xl mx-auto px-4 pb-20">
       <SEO 
         title="Contact Support" 
         description="Get in touch with the TubeMaster AI team. Support, Enterprise inquiries, and Feature requests." 

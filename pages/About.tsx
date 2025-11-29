@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Card, SectionTitle, Badge } from '../components/UI';
 import { SEO } from '../components/SEO';
 
 export const About: React.FC = () => {
   return (
-    <div className="space-y-16 pb-20 animate-fade-in">
+    <div className="space-y-16 pb-20">
       <SEO 
         title="About Us - Data-Driven Growth" 
         description="Learn about TubeMaster AI's mission to help creators make better decisions using advanced analytics and computer vision." 

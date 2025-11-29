@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Spinner, Card, SectionTitle, Input } from '../components/UI';
 import { generateVideoDescription } from '../services/geminiService';
@@ -82,7 +81,7 @@ export const DescriptionGenerator: React.FC = () => {
         {/* Right: Output */}
         <div className="lg:col-span-7">
            {result ? (
-             <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 md:p-8 animate-fade-in relative">
+             <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 md:p-8 relative">
                <div className="flex justify-between items-center mb-6">
                  <h3 className="text-xl font-bold text-white">Generated Description</h3>
                  <button onClick={copyFull} className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors">

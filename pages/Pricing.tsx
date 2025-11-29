@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, Button, Badge } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +11,7 @@ export const Pricing: React.FC<PricingProps> = ({ onNavigate }) => {
   const { user } = useAuth();
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
+    <div className="max-w-7xl mx-auto pb-20">
       <SEO 
         title="Pricing Plans" 
         description="Join the TubeMaster AI Beta. Full access to all tools for free." 

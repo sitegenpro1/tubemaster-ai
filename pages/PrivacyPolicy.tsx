@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { SectionTitle } from '../components/UI';
 import { SEO } from '../components/SEO';
 
 export const PrivacyPolicy: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto px-4 pb-20 animate-fade-in">
+    <div className="max-w-4xl mx-auto px-4 pb-20">
       <SEO 
         title="Privacy Policy" 
         description="Legal information regarding data usage, cookies, and AI processing at TubeMaster AI." 

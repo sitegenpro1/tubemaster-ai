@@ -139,7 +139,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         <div className="absolute top-0 right-0 w-[200px] md:w-[500px] h-[200px] md:h-[500px] bg-purple-600/10 blur-[50px] md:blur-[100px] rounded-full -z-10 transform-gpu translate-z-0"></div>
         
         <div className="text-center max-w-4xl mx-auto space-y-6 md:space-y-8 px-4 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-slate-900/50 border border-brand-500/30 backdrop-blur-md mb-2 md:mb-4 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-slate-900/50 border border-brand-500/30 backdrop-blur-md mb-2 md:mb-4">
             <span className="relative flex h-2.5 w-2.5 md:h-3 md:w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 md:h-3 md:w-3 bg-brand-500"></span>
@@ -147,19 +147,19 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <span className="text-xs md:text-sm font-medium text-brand-300 tracking-wide">New: Advanced Competitor Spy Engine</span>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.1] animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.1]">
             The Ultimate <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 via-brand-400 to-purple-400">YouTube SEO Tool</span>
           </h1>
           
-          <p className="text-base sm:text-lg md:text-2xl text-slate-400 max-w-xl md:max-w-2xl mx-auto leading-normal md:leading-relaxed animate-fade-in" style={{ animationDelay: '200ms' }}>
+          <p className="text-base sm:text-lg md:text-2xl text-slate-400 max-w-xl md:max-w-2xl mx-auto leading-normal md:leading-relaxed">
             Explode your channel growth with the all-in-one suite. 
             <span className="text-slate-200 font-semibold"> Find Keywords</span>, 
             <span className="text-slate-200 font-semibold"> Write Viral Scripts</span>, and 
             <span className="text-slate-200 font-semibold"> Create Explainer Graphics</span> that demand attention.
           </p>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-3 md:gap-4 pt-2 md:pt-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
+          <div className="flex flex-col sm:flex-row justify-center gap-3 md:gap-4 pt-2 md:pt-4">
             <Button 
               variant="glow" 
               className="w-full sm:w-auto px-6 py-3 md:px-8 md:py-4 text-base md:text-lg"
@@ -173,7 +173,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </div>
 
           {/* Social Proof / Stats */}
-          <div className="grid grid-cols-3 gap-4 md:gap-8 pt-6 md:pt-12 border-t border-slate-800/50 mt-6 md:mt-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '500ms' }}>
+          <div className="grid grid-cols-3 gap-4 md:gap-8 pt-6 md:pt-12 border-t border-slate-800/50 mt-6 md:mt-12 max-w-2xl mx-auto">
              <div>
                <div className="text-xl md:text-3xl font-bold text-white">10+</div>
                <div className="text-[10px] md:text-xs uppercase tracking-widest text-slate-500 font-semibold">Growth Modules</div>

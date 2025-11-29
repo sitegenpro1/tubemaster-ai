@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, Button, Badge, SectionTitle } from '../components/UI';
 import { generateScript } from '../services/geminiService';
@@ -228,7 +227,7 @@ export const ScriptGenerator: React.FC = () => {
 
             {/* Content State */}
             {script ? (
-              <div className="flex flex-col h-full animate-fade-in">
+              <div className="flex flex-col h-full">
                 {/* Header */}
                 <div className="p-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-0 z-10">
                   <div>
@@ -250,8 +249,7 @@ export const ScriptGenerator: React.FC = () => {
                   {script.sections.map((section, idx) => (
                     <div 
                       key={idx} 
-                      className="group bg-slate-900/40 border border-slate-800/60 rounded-xl overflow-hidden hover:border-amber-500/30 transition-all duration-300 hover:bg-slate-900/60 hover:shadow-lg animate-slide-up"
-                      style={{ animationDelay: `${idx * 100}ms` }}
+                      className="group bg-slate-900/40 border border-slate-800/60 rounded-xl overflow-hidden hover:border-amber-500/30 transition-all duration-300 hover:bg-slate-900/60 hover:shadow-lg"
                     >
                       <div className="bg-slate-950/50 px-4 py-3 border-b border-slate-800/60 flex justify-between items-center">
                         <div className="flex items-center gap-3">
